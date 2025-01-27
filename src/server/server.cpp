@@ -116,14 +116,13 @@ void Server::ForEachEvents(epoll_event *events , int n_events )
             event.events =  EPOLLIN  ;
             event.data.fd = fd;
             epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
-
-            // ADD_Events(fd , EPOLLIN , EPOLL_CTL_ADD);
+            // ADD_Events(events[i].data.fd , EPOLLOUT ,  EPOLL_CTL_MOD );
         }
         else if(events[i].events & EPOLLIN)
         {
             cout << "\n\n--------------------------block request --------------------------\n\n" << std::endl ; 
 
-            recv(fd , &buffer , sizeof(buffer) , 0);
+            recv(fd , &buffer , sizeof(buffer) , MSG_DONTWAIT);
             serv[fd]->req.Parse(buffer);
             serv[fd]->resData = serv[fd]->req.getResult();
             ADD_Events(fd , EPOLLOUT ,  EPOLL_CTL_MOD );
@@ -136,6 +135,7 @@ void Server::ForEachEvents(epoll_event *events , int n_events )
             if(serv[fd]->res.Serve(fd , serv[fd]->resData))
             {
                 ADD_Events(fd , EPOLLIN ,  EPOLL_CTL_MOD);
+                delete serv[fd];
                 serv[fd] = new my_class(fd);
             }
 

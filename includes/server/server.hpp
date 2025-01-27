@@ -53,7 +53,7 @@ public:
 public:
     int check()
     {
-    if((time(NULL) - t ) >= 2)
+    if((time(NULL) - t ) >= 20)
         close(fd);
     return 1;
     }

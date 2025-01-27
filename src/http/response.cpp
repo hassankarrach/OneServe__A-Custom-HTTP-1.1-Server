@@ -86,9 +86,7 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		catch(const std::exception& e)
 		{
 			std::cout << e.what() << std::endl;
-			std::cout << "here ------fsf" << std::endl;
-			
-			// throw(std::logic_error("hello error"));
+			std::cout << "here ------" << std::endl;
 		
 		}
 
@@ -154,6 +152,7 @@ Response &Response::Generate(int isChunked)
 			{
 				this->_Resp += it->first + ": " + it->second + "\r\n";
 			}
+			this->_Resp += "\r\n"; // this for fix problem video 
 			break;
 		}
 		case RESPONSE::CHUNKED_BODY:
@@ -190,7 +189,7 @@ Response &Response::Generate(int isChunked)
 int Response::Send(int client_socket)
 {
 	// std::cout << _Resp << std::endl;
-	send(client_socket, this->_Resp.c_str(),  this->_Resp.size(), 0); // Send response
+	send(client_socket, this->_Resp.c_str(),  this->_Resp.size(), MSG_NOSIGNAL); // Send response
 
 	Clear();
 	return 0;
