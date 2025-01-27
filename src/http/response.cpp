@@ -11,7 +11,8 @@ Response::Response() : _version(""), _Status(""), _Headers(), _Body(""), _Resp("
 
 Response &Response::WithHttpVersion(std::string version)
 {
-	this->_version = version;
+	(void)version;
+	this->_version = "HTTP/1.1";
 	return *this;
 }
 
@@ -66,7 +67,6 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 {
 	std::string Root = "www";
 	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + "/" + req._uri.host;
-
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb
 
@@ -78,7 +78,19 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		if (_fileSize < chunk_threshold)
 		{
 			std::string body;
+		try
+		{
 			body.assign((std::istreambuf_iterator<char>(_file)), std::istreambuf_iterator<char>());
+		
+		}
+		catch(const std::exception& e)
+		{
+			std::cout << e.what() << std::endl;
+			std::cout << "here ------fsf" << std::endl;
+			
+			// throw(std::logic_error("hello error"));
+		
+		}
 
 			(this)->WithHttpVersion(Version::toString(req._version))
 				.WithStatus(200)
@@ -177,7 +189,7 @@ Response &Response::Generate(int isChunked)
 
 int Response::Send(int client_socket)
 {
-	std::cout << _Resp << std::endl;
+	// std::cout << _Resp << std::endl;
 	send(client_socket, this->_Resp.c_str(),  this->_Resp.size(), 0); // Send response
 
 	Clear();

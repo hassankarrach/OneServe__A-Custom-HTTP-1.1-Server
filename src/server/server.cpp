@@ -1,73 +1,168 @@
-#include "../../includes/webserv.hpp"
-#include <fstream>
-#include <sstream>
+
+#include "../../includes/server/server.hpp"
+
+using namespace std;
+
+
+string Responde()
+{
+
+    string data;
+    ifstream file("/home/abquaoub/Desktop/webserv/OneServe__A-Custom-HTTP-1.1-Server/src/index.html");
+    std::string ss;
+    getline(file , ss , '\0');
+    std::ostringstream tt;
+
+    tt << ss.size();
+
+    data = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: html\r\nContent-Length: " ;
+    data += tt.str();
+    data += "\r\n\r\n";
+    data += ss;
+    return data;
+}
+
+
+
+
 
 Server::Server()
 {
+    flag = 0;
+    epfd = epoll_create(1);
+
 }
+
+
+void Server::CreatServer(vector<addrinfo *> hosts)
+{
+    int option = 1;
+    for(unsigned long i = 0; i < hosts.size(); i++)
+    {
+        int fd = socket(hosts[i]->ai_family , hosts[i]->ai_socktype , hosts[i]->ai_protocol);
+        
+        
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)); // 
+        
+        // int flags = fcntl(fd, F_GETFL, 0);
+        // fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+
+
+        bind(fd , hosts[i]->ai_addr , hosts[i]->ai_addrlen);
+    
+        if(errno < 0)
+            throw(std::logic_error(strerror(errno)));
+        
+        listen(fd , 1000);
+
+        sockfds.push_back(fd);
+        epoll_event event;
+
+        event.events =  EPOLLIN   ;
+        event.data.fd = fd;
+        epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+        // ADD_Events(fd, EPOLLIN ,EPOLL_CTL_ADD);
+    }
+}
+
+
+
+bool Server::find(int fd)
+{
+    vector<int>::iterator it = std::find(sockfds.begin() , sockfds.end() , fd );
+    return (it != sockfds.end());
+}
+
 
 Server::~Server()
 {
-    close(_server_fd);
+    close(epfd);
+};
+
+
+
+void Server::ADD_Events(int _fd , EPOLL_EVENTS ev , int op )
+{
+
+    epoll_event event;
+
+    event.events =  ev ;
+    event.data.fd = _fd;
+    epoll_ctl(epfd, op, _fd, &event);
+
 }
 
-void Server::Init()
+
+
+
+void Server::ForEachEvents(epoll_event *events , int n_events )
 {
-    int server_fd, client_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    int opt = 1;
 
-    // Creating socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    char buffer[4096];
+    int fd;
+    for(int i = 0; i < n_events ;i++)
     {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
+        fd = events[i].data.fd;
+        if(this->find(fd))
+        {
+            std::cout << "\n\n============================ block connection ============================\n\n" << std::endl;
+            fd = accept(fd , NULL , NULL);
 
-    // Set socket options
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
+            serv[fd] = new my_class(fd);
 
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+            epoll_event event;
 
-    // Bind the socket to localhost port 8080
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
+            event.events =  EPOLLIN  ;
+            event.data.fd = fd;
+            epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
 
-    if (listen(server_fd, 1) < 0) // Listen for only one connection
-    {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
+            // ADD_Events(fd , EPOLLIN , EPOLL_CTL_ADD);
+        }
+        else if(events[i].events & EPOLLIN)
+        {
+            cout << "\n\n--------------------------block request --------------------------\n\n" << std::endl ; 
 
-    // Accept one connection at a time
-    client_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
-    if (client_socket < 0)
-    {
-        perror("accept");
-        return;
-    }
-    else // I'm serving only one client, NO MORE -_.
-        this->Serve_client(client_socket);
-}
+            recv(fd , &buffer , sizeof(buffer) , 0);
+            serv[fd]->req.Parse(buffer);
+            serv[fd]->resData = serv[fd]->req.getResult();
+            ADD_Events(fd , EPOLLOUT ,  EPOLL_CTL_MOD );
 
-void Server::Serve_client(int client_socket)
-{
-    char buffer[4096] = {0};
-    Request     *req; // ++;
-    Response    *res; 
-
-    while (true)
-    {
+        }
+        else if(events[i].events & EPOLLOUT)
+        {
+            cout << "\n\n+++++++++++++++++++++++++ block respond +++++++++++++++++++++++++\n\n" << std::endl ; 
         
+            if(serv[fd]->res.Serve(fd , serv[fd]->resData))
+            {
+                ADD_Events(fd , EPOLLIN ,  EPOLL_CTL_MOD);
+                serv[fd] = new my_class(fd);
+            }
+
+        }
+
     }
+
+}
+    
+
+
+
+
+
+void Server::CreatMultiplexing()
+{
+    epoll_event events[sockfds.size()];
+    std::map<int , my_class *>::iterator it;
+    int n_events;
+    it = serv.begin();
+
+    while(true)
+    {
+        n_events = epoll_wait(epfd, events, sockfds.size(), 0);
+        ForEachEvents(events , n_events);
+        
+        it = (it != serv.end() && it->second->check()) ? it++ : serv.begin();
+    }
+
 }
