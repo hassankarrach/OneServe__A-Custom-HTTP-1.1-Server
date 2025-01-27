@@ -122,10 +122,14 @@ void Server::ForEachEvents(epoll_event *events , int n_events )
         {
             cout << "\n\n--------------------------block request --------------------------\n\n" << std::endl ; 
 
-            recv(fd , &buffer , sizeof(buffer) , MSG_DONTWAIT);
-            serv[fd]->req.Parse(buffer);
-            serv[fd]->resData = serv[fd]->req.getResult();
-            ADD_Events(fd , EPOLLOUT ,  EPOLL_CTL_MOD );
+            int len = recv(fd , &buffer , sizeof(buffer) , MSG_DONTWAIT);
+                buffer[len]  =0;
+            std::cout << buffer << std::endl;
+            if(serv[fd]->req.Parse(buffer))
+            {
+                serv[fd]->resData = serv[fd]->req.getResult();
+                ADD_Events(fd , EPOLLOUT ,  EPOLL_CTL_MOD );
+            }
 
         }
         else if(events[i].events & EPOLLOUT)

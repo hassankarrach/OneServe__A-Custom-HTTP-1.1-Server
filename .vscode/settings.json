@@ -11,6 +11,12 @@
 		"tuple": "cpp",
 		"unordered_map": "cpp",
 		"istream": "cpp",
-		"cstring": "cpp"
+		"cstring": "cpp",
+		"deque": "cpp",
+		"forward_list": "cpp",
+		"list": "cpp",
+		"vector": "cpp",
+		"array": "cpp",
+		"regex": "cpp"
 	}
 }
