@@ -1,11 +1,10 @@
 #include "../../includes/http/response.hpp"
 #include <sys/socket.h>
-#include <unistd.h> 
+#include <unistd.h>
 #include <sstream>
 
 Response::Response() : _version(""), _Status(""), _Headers(), _Body(""), _Resp(""), _fileSize(0)
 {
-	std::cout << "==Response created==" << std::endl;
 	_ChunkedState = RESPONSE::CHUNKED_HEADERS;
 }
 
@@ -41,25 +40,155 @@ Response &Response::WithBody(std::string body)
 	return *this;
 }
 
+void Response::BadRequest(std::string PageUrl)
+{
+	std::ifstream DefFile;
+	std::ifstream file(PageUrl.c_str());
+
+	std::string body;
+	
+	if (!file.is_open())
+	{
+		DefFile.open("www/html/errors/400.html");
+		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
+	}
+	else
+		body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(400)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(body)
+		.Generate()
+		.Send(1);
+}
+void Response::NotFound(std::string PageUrl)
+{
+	std::ifstream DefFile;
+	std::ifstream file(PageUrl.c_str());
+
+	std::string body;
+	
+	if (!file.is_open())
+	{
+		DefFile.open("www/html/errors/404.html");
+		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
+	}
+	else
+		body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(404)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(body)
+		.Generate()
+		.Send(1);
+}
+void Response::MethodNotAllowed(std::string PageUrl)
+{
+	std::ifstream DefFile;
+	std::ifstream file(PageUrl.c_str());
+
+	std::string body;
+	
+	if (!file.is_open())
+	{
+		DefFile.open("www/html/errors/405.html");
+		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
+	}
+	else
+		body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(405)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(body)
+		.Generate()
+		.Send(1);
+}
+void Response::InternalServerError(std::string PageUrl)
+{
+	std::ifstream DefFile;
+	std::ifstream file(PageUrl.c_str());
+
+	std::string body;
+	
+	if (!file.is_open())
+	{
+		DefFile.open("www/html/errors/500.html");
+		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
+	}
+	else
+		body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(500)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(body)
+		.Generate()
+		.Send(1);
+}
+void Response::NotImplemented(std::string PageUrl)
+{
+	std::ifstream DefFile;
+	std::ifstream file(PageUrl.c_str());
+
+	std::string body;
+	
+	if (!file.is_open())
+	{
+		DefFile.open("www/html/errors/501.html");
+		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
+	}
+	else
+		body.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(501)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(body)
+		.Generate()
+		.Send(1);
+}
+void Response::Created()
+{
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(201)
+		.setDefaultHeaders()
+		.Generate()
+		.WithBody("<html><body><h1>201 Created</h1></body></html>")
+		.Send(1);
+}
+
+
 bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, int client_socket)
 {
+	(void)client_socket;
+	(void)req;
+
+	
 	this->_file.open(resolvedPath.c_str(), std::ios::in | std::ios::binary);
 	if (!this->_file.is_open())
 	{
-		(this)->WithHttpVersion(Version::toString(req._version))
-			.WithStatus(404)
-			.setDefaultHeaders()
-			.WithBody("404 Not Found")
-			.Generate()
-			.Send(client_socket);
+		// File not found
+		NotFound(resolvedPath);
 
 		return false;
 	}
-
 	this->_file.seekg(0, std::ios::end);
 	_fileSize = this->_file.tellg();
 	this->_file.seekg(0, std::ios::beg);
-
 	return true;
 }
 
@@ -78,26 +207,18 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		if (_fileSize < chunk_threshold)
 		{
 			std::string body;
-		try
-		{
-			body.assign((std::istreambuf_iterator<char>(_file)), std::istreambuf_iterator<char>());
-		
-		}
-		catch(const std::exception& e)
-		{
-			std::cout << e.what() << std::endl;
-			std::cout << "here ------" << std::endl;
-		
-		}
-
-			(this)->WithHttpVersion(Version::toString(req._version))
-				.WithStatus(200)
-				.setDefaultHeaders()
-				.WithHeader("Content-Type", GetMimeType(resolvedPath))
-				.WithHeader("Content-Length", NumberToString(body.size()))
-				.WithBody(body)
-				.Generate()
-				.Send(client_socket);
+			try
+			{
+				body.assign((std::istreambuf_iterator<char>(_file)), std::istreambuf_iterator<char>());
+			}
+			catch (const std::exception &e)
+			{
+				std::cout << e.what() << std::endl;
+				std::cout << resolvedPath << std::endl; // this Prints : [ www/ ]
+				std::cout << "here ------" << std::endl;
+				return (0);
+			}
+			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithHeader("Content-Length", NumberToString(body.size())).WithBody(body).Generate().Send(client_socket);
 
 			_file.close();
 			return 1; // Done
@@ -105,13 +226,7 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		else
 		{
 			// Send headers for chunked transfer encoding
-			(this)->WithHttpVersion(Version::toString(req._version))
-				.WithStatus(200)
-				.setDefaultHeaders()
-				.WithHeader("Content-Type", GetMimeType(resolvedPath))
-				.WithHeader("Transfer-Encoding", "chunked")
-				.Generate(1)
-				.Send(client_socket);
+			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithHeader("Transfer-Encoding", "chunked").Generate(1).Send(client_socket);
 			_ChunkedState = RESPONSE::CHUNKED_BODY;
 			return 0; // Continue through epoll
 		}
@@ -152,7 +267,7 @@ Response &Response::Generate(int isChunked)
 			{
 				this->_Resp += it->first + ": " + it->second + "\r\n";
 			}
-			this->_Resp += "\r\n"; // this for fix problem video 
+			this->_Resp += "\r\n"; // this for fix problem video
 			break;
 		}
 		case RESPONSE::CHUNKED_BODY:
@@ -188,9 +303,7 @@ Response &Response::Generate(int isChunked)
 
 int Response::Send(int client_socket)
 {
-	// std::cout << _Resp << std::endl;
-	send(client_socket, this->_Resp.c_str(),  this->_Resp.size(), MSG_NOSIGNAL); // Send response
-
+	send(client_socket, this->_Resp.c_str(), this->_Resp.size(), MSG_NOSIGNAL); // Send response
 	Clear();
 	return 0;
 }
@@ -201,16 +314,4 @@ void Response::Clear()
 	_Body = "";
 	_Status = "";
 	_Headers.clear();
-}
-
-int Response::HardClear()
-{
-	_Resp = "";
-	_Body = "";
-	_Status = "";
-	_Headers.clear();
-	_fileSize = 0;
-	_ChunkedState = RESPONSE::CHUNKED_HEADERS;
-	_file.close();
-	return 0;
 }

@@ -8,6 +8,10 @@
 #include "../utils/utils.hpp"
 #include "../types/reqTypes.hpp"
 
+#include <sstream>
+#include <iomanip>
+#include <ctime>
+
 class RequestParser
 {
 private:
@@ -15,6 +19,8 @@ private:
 	HttpRequestData	_res;
 	
 	// Tmp holders
+	std::ofstream	_tmp_file;
+	std::string		_tmp_file_name;
 	std::string		_method_tmp;
 	std::string		_version_tmp;
 	// Headers
@@ -43,13 +49,11 @@ public:
 	RequestParser();
 	~RequestParser();
 
+	std::string		generateUniqueFileName();
 	
 	int				Parse(std::string request);
 	int				ParseMultiPartFormData();
 	HttpRequestData getResult();
-	
-
-	int				HardClear();
 };
 
 #endif

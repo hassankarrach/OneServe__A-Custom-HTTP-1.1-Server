@@ -24,6 +24,16 @@ private:
 public:
 	Response();
 
+	// Static Common Responses
+	static void BadRequest(std::string PageUrl);
+	static void NotFound(std::string PageUrl);
+	static void MethodNotAllowed(std::string PageUrl);
+	static void InternalServerError(std::string PageUrl);
+	static void NotImplemented(std::string PageUrl);
+	// POST
+	static void Created();
+
+
 	// Methods
 	Response &WithHttpVersion(std::string version);
 	Response &WithStatus(int status);
@@ -31,6 +41,8 @@ public:
 	Response &WithHeader(std::string key, std::string value);
 	Response &WithBody(std::string body);
 	Response &Generate(int isChunked = 0);
+	
+	
 	void Clear();
 
 	// Serving Strategy
@@ -38,11 +50,6 @@ public:
 	int Serve(int client_socket, HttpRequestData &req);
 
 	int Send(int client_socket);
-
-
-	int		HardClear();
-
-
 };
 
 #endif

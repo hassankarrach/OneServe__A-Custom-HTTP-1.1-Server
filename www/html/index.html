@@ -39,14 +39,15 @@
     <div class="card">
       <h3>File Upload</h3>
       <p>Choose a file to upload.</p>
-      <form onsubmit="event.preventDefault(); alert('File uploaded!')">
+      <form id="file-upload-form">
         <div class="form-group">
-          <input type="file" id="file">
+          <input type="file" id="file" name="file">
         </div>
         <div class="form-group">
           <button type="submit">Upload File</button>
         </div>
       </form>
+      <div id="response-message"></div>
     </div>
 
     <!-- Error Handling -->
@@ -63,5 +64,40 @@
       <button onclick="alert('Simulated 10 concurrent connections!')">Simulate</button>
     </div>
   </div>
+
+  <script>
+    // Handle the file upload form submission
+    document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+      event.preventDefault();  // Prevent default form submission
+
+      // Get the file input element
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];  // Get the selected file
+
+      if (!file) {
+        alert("Please select a file to upload.");
+        return;
+      }
+
+      // Create a FormData object to hold the file data
+      const formData = new FormData();
+      formData.append('file', file);  // Append the file to the form data
+
+      // Send the POST request with the file using fetch
+      fetch('/upload', {
+        method: 'POST',
+        body: formData  // Attach the FormData object to the request body
+      })
+      .then(response => response.json())  // Assuming the server responds with JSON
+      .then(data => {
+        // Display the server's response (optional)
+        document.getElementById('response-message').innerHTML = `File uploaded successfully: ${data.filename}`;
+      })
+      .catch(error => {
+        console.error('Error uploading file:', error);
+        alert('Error uploading file.');
+      });
+    });
+  </script>
 </body>
 </html>

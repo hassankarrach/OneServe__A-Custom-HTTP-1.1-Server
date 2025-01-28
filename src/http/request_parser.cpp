@@ -1,35 +1,6 @@
 #include "../../includes/http/request_parser.hpp"
 #include <vector>
 
-int RequestParser::HardClear()
-{
-	this->_curr_header_key = "";
-	this->_curr_header_value = "";
-	this->_method_tmp = "";
-	this->_version_tmp = "";
-	
-	this->_res._result = PARSE::RES_INCOMPLETE;
-	this->_res._state = PARSE::STATE_REQUEST_METHOD_START;
-	this->_res._method = Method::UNKNOWN;
-	this->_res._uri.scheme = "";
-	this->_res._uri.host = "";
-	this->_res._uri.port = "";
-	this->_res._uri.path = "";
-	this->_res._uri.query = "";
-	this->_res._uri.fragment = "";
-	this->_res._version = Version::UNKNOWN;
-	this->_res._headers = std::map<std::string, std::string>();
-	this->_res._body_type = PARSE::NO_BODY;
-	this->_res._body = "";
-	this->_res._body_length = 0;
-	this->_res._chunked_size = 0;
-	this->_res._content_type = "";
-	this->_res._boundary = "";
-	this->_res._Fields = std::map<std::string, std::string>();
-	this->_res._is_multipart = false;
-	return (1);
-}
-
 RequestParser::RequestParser()
 {
 	// Tmp holders
@@ -63,22 +34,6 @@ RequestParser::RequestParser()
 
 RequestParser::~RequestParser()
 {
-	// std::cout << "Got a " << this->request_method << " request for " << this->uri << " with HTTP version " << this->http_version << std::endl;
-	// std::cout << "Ended in state " << PARSE::toString(this->state) << std::endl;
-
-	// std::cout << "==============================================" << std::endl;
-	// std::cout << "The headers are: " << std::endl;
-	// for (std::map<std::string, std::string>::iterator it = this->headers.begin(); it != this->headers.end(); it++)
-	// {
-	// 	std::cout << it->first << ": " << it->second << std::endl;
-	// }
-	// std::cout << "Body_type: " << this->body_type << std::endl;
-	// if (this->is_multipart)
-	// {
-	// 	std::cout << "and its boundary is: " << this->boundary << std::endl;
-	// }
-
-	// std::cout << "The body is: " << this->body << std::endl;
 }
 
 int RequestParser::Parse(std::string request)
@@ -87,7 +42,6 @@ int RequestParser::Parse(std::string request)
 	const char *end = begin + request.length();
 	const char *current = begin;
 
-	std::ofstream tmp_file("tmp", std::ios::binary | std::ios::trunc); // chunked data & multipart body.
 	while (current != end)
 	{
 		switch (this->_res._state)
@@ -95,7 +49,7 @@ int RequestParser::Parse(std::string request)
 		case PARSE::STATE_REQUEST_METHOD_START:
 		{
 			if (!isalpha(*current))
-				return (0);
+				return (-1);
 			else
 			{
 				this->_method_tmp.push_back(*current);
@@ -110,10 +64,10 @@ int RequestParser::Parse(std::string request)
 				if (this->_method_tmp == "GET" || this->_method_tmp == "POST" || this->_method_tmp == "DELETE")
 					this->_res._state = PARSE::STATE_REQUEST_SPACES_BEFORE_URI;
 				else
-					return (0);
+					return (-1);
 			}
 			else if (!isalpha(*current))
-				return (0);
+				return (-1);
 			else
 				this->_method_tmp.push_back(*current);
 			break;
@@ -126,7 +80,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_REQUEST_URI;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_URI:
@@ -142,7 +96,7 @@ int RequestParser::Parse(std::string request)
 			else if (*current == '#')
 				this->_res._state = PARSE::STATE_REQUEST_URI_FRAGMENT_START;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_URI_QUERY_START:
@@ -153,7 +107,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_REQUEST_URI_QUERY;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_URI_QUERY:
@@ -165,7 +119,7 @@ int RequestParser::Parse(std::string request)
 			else if (*current == '#')
 				this->_res._state = PARSE::STATE_REQUEST_URI_FRAGMENT_START;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_URI_FRAGMENT_START:
@@ -176,7 +130,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_REQUEST_URI_FRAGMENT;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_URI_FRAGMENT:
@@ -186,7 +140,7 @@ int RequestParser::Parse(std::string request)
 			else if (isAlpha(*current) || isDigit(*current) || isUnreserved(*current) || isSubDelim(*current) || *current == '%' || isReservedPath(*current))
 				this->_res._uri.fragment.push_back(*current);
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_SPACE_BEFORE_HTTP_VERSION:
@@ -194,7 +148,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == 'H')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_H;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_H:
@@ -202,7 +156,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == 'T')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_T1;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_T1:
@@ -210,7 +164,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == 'T')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_T2;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_T2:
@@ -218,7 +172,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == 'P')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_P;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_P:
@@ -226,7 +180,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '/')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_SLASH;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_SLASH:
@@ -237,7 +191,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_MAJOR;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_MAJOR:
@@ -245,7 +199,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '.')
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_DOT;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_DOT:
@@ -257,7 +211,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_REQUEST_VERSION_MINOR;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_VERSION_MINOR:
@@ -265,7 +219,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '\r')
 				this->_res._state = PARSE::STATE_REQUEST_LINE_CR;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_LINE_CR:
@@ -273,7 +227,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_REQUEST_LINE_LF;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_REQUEST_LINE_LF:
@@ -286,7 +240,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_HEADER_KEY_START;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_KEY_START:
@@ -299,7 +253,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_HEADER_KEY;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_KEY:
@@ -311,7 +265,7 @@ int RequestParser::Parse(std::string request)
 			else if (isTchar(*current))
 				this->_curr_header_key.push_back(*current);
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_COLON:
@@ -324,7 +278,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_HEADER_VALUE_START;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_SPACE_BEFORE_VALUE:
@@ -335,7 +289,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_HEADER_VALUE;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_VALUE_START:
@@ -346,7 +300,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._state = PARSE::STATE_HEADER_VALUE;
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_VALUE:
@@ -356,7 +310,7 @@ int RequestParser::Parse(std::string request)
 			else if (isPrintable(*current))
 				this->_curr_header_value.push_back(*current);
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_LINE_CR:
@@ -364,7 +318,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_HEADER_LINE_LF;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_HEADER_LINE_LF:
@@ -374,8 +328,7 @@ int RequestParser::Parse(std::string request)
 			else if (*current == '\r')
 				this->_res._state = PARSE::STATE_END_OF_HEADERS_CR;
 			else
-				return (0);
-
+				return (-1);
 			// Converte Key to lowercase for case insensitive comparison
 			this->_curr_header_key = to_lowercase(this->_curr_header_key);
 
@@ -396,7 +349,7 @@ int RequestParser::Parse(std::string request)
 						this->_res._is_multipart = true;
 					}
 					else
-						return (0);
+						return (-1);
 				}
 			}
 			this->_res._headers[this->_curr_header_key] = this->_curr_header_value;
@@ -408,27 +361,31 @@ int RequestParser::Parse(std::string request)
 		case PARSE::STATE_END_OF_HEADERS_CR:
 		{
 			if (this->_res._headers.find("transfer-encoding") != this->_res._headers.end() && this->_res._headers.find("content-length") != this->_res._headers.end()) // only one of them should be there.
-				return (0);
+				return (-1);
 
 			if (this->_res._headers.find("host") == this->_res._headers.end())
-				return (0);
+				return (-1);
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_END_OF_HEADERS_LF;
 			else
-				return (0);
+				return (-1);
 
-			if (!*(current + 1))
+			if (this->_method_tmp == "GET") // Ignore body for GET, NEED more Attention/Analysis. POST/DELETE.
 				return (1);
 			break;
 		}
 		case PARSE::STATE_END_OF_HEADERS_LF:
 		{
 			if (this->_res._body_type == PARSE::CONTENT_LENGTH && !this->_res._body_length) // No body
-				return (0);
+				return (-1);
 
 			if (this->_res._body_type == PARSE::CONTENT_LENGTH && this->_method_tmp != "GET")
 			{
-				this->_res._body.push_back(*current);
+				this->_tmp_file_name = generateUniqueFileName();
+				this->_tmp_file.open(_tmp_file_name.c_str(), std::ios::binary | std::ios::trunc);
+				if (!this->_tmp_file.is_open())
+					return (-1);
+				_tmp_file << *current;
 				this->_res._state = PARSE::STATE_BODY_CONTENT_LENGTH;
 			}
 			else if (this->_res._body_type == PARSE::CHUNKED && this->_method_tmp != "GET")
@@ -439,7 +396,7 @@ int RequestParser::Parse(std::string request)
 					this->_res._state = PARSE::STATE_BODY_CHUNKED_SIZE;
 				}
 				else
-					return (0);
+					return (-1);
 			}
 			else
 				return (1);
@@ -447,12 +404,12 @@ int RequestParser::Parse(std::string request)
 		}
 		case PARSE::STATE_BODY_CONTENT_LENGTH:
 		{
-			if (this->_res._body.length() < this->_res._body_length)
-				this->_res._body.push_back(*current);
+			if (static_cast<std::streamoff>(this->_res._body_length) > _tmp_file.tellp())
+				_tmp_file << *current; // Write data to the file
 			else
-				return (0);
+				return (-1);
 
-			if (this->_res._body.length() == this->_res._body_length)
+			if (static_cast<std::streamoff>(this->_res._body_length) == _tmp_file.tellp())
 				return (1);
 			break;
 		}
@@ -465,7 +422,7 @@ int RequestParser::Parse(std::string request)
 				this->_res._chunked_size = this->_res._chunked_size * 16 + fromHex(*current);
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_BODY_CHUNKED_SIZE_CR:
@@ -473,7 +430,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_BODY_CHUNKED_SIZE_LF;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_BODY_CHUNKED_SIZE_LF:
@@ -481,7 +438,7 @@ int RequestParser::Parse(std::string request)
 			if (this->_res._chunked_size)
 			{
 				this->_res._state = PARSE::STATE_BODY_CHUNKED_DATA;
-				this->_res._body.push_back(*current);
+				_tmp_file << *current;
 				this->_res._chunked_size--;
 			}
 			else
@@ -492,13 +449,13 @@ int RequestParser::Parse(std::string request)
 		{
 			if (this->_res._chunked_size)
 			{
-				this->_res._body.push_back(*current);
+				_tmp_file << *current;
 				this->_res._chunked_size--;
 			}
 			else if (*current == '\r')
 				this->_res._state = PARSE::STATE_BODY_CHUNKED_DATA_CR;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_BODY_CHUNKED_DATA_CR:
@@ -506,7 +463,7 @@ int RequestParser::Parse(std::string request)
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_BODY_CHUNKED_DATA_LF;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_BODY_CHUNKED_DATA_LF:
@@ -519,7 +476,7 @@ int RequestParser::Parse(std::string request)
 			else if (*current == '\r')
 				this->_res._state = PARSE::STATE_END_OF_CHUNKED_CR;
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_END_OF_CHUNKED_CR:
@@ -531,37 +488,39 @@ int RequestParser::Parse(std::string request)
 					return (1);
 			}
 			else
-				return (0);
+				return (-1);
 			break;
 		}
 		case PARSE::STATE_END_OF_CHUNKED_LF:
 		{
 			// it reachs here, because there is a *curr. last char was \n so it should considered as the last chunked data.
-			return (0); // Weird, but yeah. any chars after end of chunks are considered errors.
+			return (-1); // Weird, but yeah. any chars after end of chunks are considered errors.
 		}
 		default:
 			break;
 		}
 		current++;
 	}
-
-	tmp_file.close();
-	return (1);
+	return (0);
 }
 
 int RequestParser::ParseMultiPartFormData()
 {
+	// TODO : Handle File close. 
 	// Field/Value pairs
 	std::string field_name;
 	std::string field_value;
-	std::ofstream file;
-	this->_res._boundary = "------------------------74678048f707cd13";
+	std::ofstream curr_file;
 
+	std::string ROOT = "./www/uploads/";
+
+	if (this->_tmp_file.is_open())
+		this->_tmp_file.close();
 	// Open tmp file
-	std::ifstream tmp_file("tmp", std::ios::binary);
-	if (!tmp_file.is_open())
+	std::ifstream MultiPartData(this->_tmp_file_name.c_str(), std::ios::binary);
+	if (!MultiPartData.is_open())
 	{
-		std::cerr << "Error: Could not open tmp file." << std::endl;
+		std::cout << "Error: Could not open tmp file." << std::endl;
 		return (0);
 	}
 
@@ -569,10 +528,10 @@ int RequestParser::ParseMultiPartFormData()
 
 	// read line by line
 	std::string line;
-	while (std::getline(tmp_file, line))
+	while (std::getline(MultiPartData, line))
 	{
 		if (line[line.length() - 1] != '\r' && state != PARSE::STATE_CONTENT_FILE_DATA) // exept file data, all lines should end with \r\n
-			return (0);
+			return (0); // TODO : COMMENTED BECAUSE, THE LAST LINE WILL BE IGNOREDM WHILE IT SHOULD CONTAIN \r\n
 
 		line += "\n";
 
@@ -580,9 +539,7 @@ int RequestParser::ParseMultiPartFormData()
 		{
 		case PARSE::STATE_BOUNDARY:
 		{
-			std::string boundary = "--" + this->_res._boundary + "\r\n";
-
-			if (line == boundary)
+			if (line == "--" + this->_res._boundary + "\r\n") //fix this.
 			{
 				state = PARSE::STATE_CONTENT_DISPOSITION;
 				break;
@@ -621,8 +578,9 @@ int RequestParser::ParseMultiPartFormData()
 			field_value = field_value.substr(0, field_value.find("\""));
 
 			// Open file
-			file.open(field_value.c_str(), std::ios::binary);
-
+			curr_file.open((ROOT + field_value).c_str(), std::ios::binary);
+			if (!curr_file.is_open())
+				return (0);
 			state = PARSE::STATE_CONTENT_TYPE;
 			break;
 		}
@@ -641,7 +599,6 @@ int RequestParser::ParseMultiPartFormData()
 			field_value = line.substr(0, line.length() - 2); // remove \r\n
 
 			this->_res._Fields[field_name] = field_value;
-
 			state = PARSE::STATE_BOUNDARY;
 			break;
 		}
@@ -670,15 +627,21 @@ int RequestParser::ParseMultiPartFormData()
 		{
 			if (line == "--" + this->_res._boundary + "--\r\n")
 			{
+				curr_file.close();
 				state = PARSE::STATE_BOUNDARY_END;
+				break;
+			}
+			else if (line == "--" + this->_res._boundary + "\r\n")
+			{
+				curr_file.close();
+				state = PARSE::STATE_CONTENT_DISPOSITION;
 				break;
 			}
 			else
 			{
-				file << line;
+				curr_file << line.substr(0, line.length() - 2); // remove \r\n
 				break;
 			}
-			break;
 		}
 		case PARSE::STATE_EMPTY_LINE_BEFORE_BOUNDARY_END:
 		{
@@ -708,6 +671,21 @@ int RequestParser::ParseMultiPartFormData()
 	return (1);
 }
 
+std::string RequestParser::generateUniqueFileName()
+{
+	std::ostringstream oss;
+	std::time_t now = std::time(NULL);
+	struct tm *timeinfo = std::localtime(&now);
+
+	// Buffer to hold the formatted time
+	char buffer[20];
+	std::strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", timeinfo);
+
+	// Combine the formatted time with a random number
+	oss << "upload_" << buffer << "_" << std::rand() % 10000;
+	return oss.str();
+}
+
 HttpRequestData RequestParser::getResult()
 {
 	if (this->_method_tmp == "GET")
@@ -723,6 +701,5 @@ HttpRequestData RequestParser::getResult()
 		this->_res._version = Version::HTTP_1_1;
 
 	// Refactor URI HERE
-
 	return (this->_res);
 }
