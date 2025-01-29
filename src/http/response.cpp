@@ -37,6 +37,7 @@ Response &Response::WithHeader(std::string key, std::string value)
 Response &Response::WithBody(std::string body)
 {
 	_Body = body;
+	(*this).WithHeader("content-length", NumberToString(body.size()));
 	return *this;
 }
 
@@ -64,7 +65,7 @@ void Response::BadRequest(std::string PageUrl)
 		.Generate()
 		.Send(1);
 }
-void Response::NotFound(std::string PageUrl)
+void Response::NotFound(std::string PageUrl, int client_socket)
 {
 	std::ifstream DefFile;
 	std::ifstream file(PageUrl.c_str());
@@ -86,7 +87,7 @@ void Response::NotFound(std::string PageUrl)
 		.WithHeader("Content-Type", "text/html")
 		.WithBody(body)
 		.Generate()
-		.Send(1);
+		.Send(client_socket);
 }
 void Response::MethodNotAllowed(std::string PageUrl)
 {
@@ -160,17 +161,23 @@ void Response::NotImplemented(std::string PageUrl)
 		.Generate()
 		.Send(1);
 }
-void Response::Created()
+void Response::Created(int client_socket)
 {
-	Response res;
-	res.WithHttpVersion("HTTP/1.1")
-		.WithStatus(201)
-		.setDefaultHeaders()
-		.Generate()
-		.WithBody("<html><body><h1>201 Created</h1></body></html>")
-		.Send(1);
-}
+    // Create the response body
+    std::string body = "{\"status\": \"created\", \"filename\": \"filename.txt\"}";
 
+    std::string content_length = NumberToString(body.size());
+
+    // Build the response
+    Response res;
+    res.WithHttpVersion("HTTP/1.1")
+        .WithStatus(201)
+        .setDefaultHeaders()
+        .WithHeader("Content-Type", "application/json")
+        .WithBody(body)
+        .Generate()
+        .Send(client_socket);
+}
 
 bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, int client_socket)
 {
@@ -182,7 +189,7 @@ bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, i
 	if (!this->_file.is_open())
 	{
 		// File not found
-		NotFound(resolvedPath);
+		NotFound(resolvedPath, client_socket);
 
 		return false;
 	}
@@ -218,7 +225,7 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 				std::cout << "here ------" << std::endl;
 				return (0);
 			}
-			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithHeader("Content-Length", NumberToString(body.size())).WithBody(body).Generate().Send(client_socket);
+			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithBody(body).Generate().Send(client_socket);
 
 			_file.close();
 			return 1; // Done
@@ -303,6 +310,7 @@ Response &Response::Generate(int isChunked)
 
 int Response::Send(int client_socket)
 {
+	// std::cout << "Response: " << _Resp << std::endl;
 	send(client_socket, this->_Resp.c_str(), this->_Resp.size(), MSG_NOSIGNAL); // Send response
 	Clear();
 	return 0;

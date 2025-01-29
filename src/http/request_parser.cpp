@@ -668,6 +668,12 @@ int RequestParser::ParseMultiPartFormData()
 			break;
 		}
 	}
+
+
+	// Close file
+	MultiPartData.close();
+	// Remove tmp file
+	// std::remove(this->_tmp_file_name.c_str());
 	return (1);
 }
 

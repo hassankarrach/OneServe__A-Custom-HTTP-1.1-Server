@@ -93,7 +93,6 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             buffer[len] = 0;
             int reqParser_res = serv[fd]->req.Parse(buffer);
 
-            std::cout << buffer << std::endl;
 
             if (reqParser_res)
             {
@@ -105,6 +104,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             }
             else if (reqParser_res == 0) // 0, continue
             {
+                std::cout << "Reads : " << len << std::endl;
                 std::cout << "Request parsing not completed. Needs More." << std::endl;
             }
             else if (reqParser_res < 0) // < 0, error
@@ -117,7 +117,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
         }
         else if (events[i].events & EPOLLOUT)
         {
-            // cout << "\n\n+++++++++++++++++++++++++ block respond +++++++++++++++++++++++++\n\n" << std::endl ;
+            cout << "\n\n+++++++++++++++++++++++++ block respond +++++++++++++++++++++++++\n\n" << std::endl ;
             Method::Type method = serv[fd]->resData._method;
 
             switch (method)
@@ -137,7 +137,11 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             }
             case Method::POST:
             {
-                Response::Created();
+                Response::Created(fd);
+                ADD_Events(fd, EPOLLIN, EPOLL_CTL_MOD);
+                delete serv[fd];
+                serv[fd] = new my_class(fd);
+
                 break;
             }
             case Method::DELETE:

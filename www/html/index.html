@@ -17,14 +17,14 @@
     <div class="card">
       <h3>Basic GET Request</h3>
       <p>Click the button to simulate a GET request.</p>
-      <button onclick="alert('GET request successful!')">Send GET Request</button>
+      <button onclick="showToast('GET request successful!')">Send GET Request</button>
     </div>
 
     <!-- Simple Form -->
     <div class="card">
       <h3>Simple Form</h3>
       <p>Submit this form to simulate sending data via POST.</p>
-      <form onsubmit="event.preventDefault(); alert('Form submitted!')">
+      <form onsubmit="event.preventDefault(); showToast('Form submitted!')">
         <div class="form-group">
           <label for="name">Name:</label>
           <input type="text" id="name" placeholder="Enter your name">
@@ -47,25 +47,40 @@
           <button type="submit">Upload File</button>
         </div>
       </form>
-      <div id="response-message"></div>
+      <div id="response-message" style="color : green"></div>
     </div>
 
     <!-- Error Handling -->
     <div class="card">
       <h3>Error Handling</h3>
       <p>Click the button to simulate a 404 error.</p>
-      <button onclick="alert('404 Error: Not Found')">Simulate Error</button>
+      <button onclick="showToast('404 Error: Not Found')">Simulate Error</button>
     </div>
 
     <!-- Concurrent Connections -->
     <div class="card">
       <h3>Concurrent Connections</h3>
       <p>Simulate multiple concurrent connections.</p>
-      <button onclick="alert('Simulated 10 concurrent connections!')">Simulate</button>
+      <button onclick="showToast('Simulated 10 concurrent connections!')">Simulate</button>
     </div>
   </div>
 
+  <!-- Toast container -->
+  <div id="toast" class="toast"></div>
+
   <script>
+    // Function to show toast messages
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
     // Handle the file upload form submission
     document.getElementById('file-upload-form').addEventListener('submit', function(event) {
       event.preventDefault();  // Prevent default form submission
@@ -75,7 +90,7 @@
       const file = fileInput.files[0];  // Get the selected file
 
       if (!file) {
-        alert("Please select a file to upload.");
+        showToast("Please select a file to upload.");
         return;
       }
 
@@ -84,18 +99,19 @@
       formData.append('file', file);  // Append the file to the form data
 
       // Send the POST request with the file using fetch
-      fetch('/upload', {
+      fetch('/', {
         method: 'POST',
         body: formData  // Attach the FormData object to the request body
       })
       .then(response => response.json())  // Assuming the server responds with JSON
       .then(data => {
         // Display the server's response (optional)
-        document.getElementById('response-message').innerHTML = `File uploaded successfully: ${data.filename}`;
+        console.log(data);
+        showToast(`File uploaded successfully: ${data.filename}`);
       })
       .catch(error => {
         console.error('Error uploading file:', error);
-        alert('Error uploading file.');
+        showToast("Error uploading file.");
       });
     });
   </script>

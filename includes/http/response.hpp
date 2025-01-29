@@ -26,12 +26,12 @@ public:
 
 	// Static Common Responses
 	static void BadRequest(std::string PageUrl);
-	static void NotFound(std::string PageUrl);
+	static void NotFound(std::string PageUrl, int client_socket);
 	static void MethodNotAllowed(std::string PageUrl);
 	static void InternalServerError(std::string PageUrl);
 	static void NotImplemented(std::string PageUrl);
 	// POST
-	static void Created();
+	static void Created(int client_socket);
 
 
 	// Methods
