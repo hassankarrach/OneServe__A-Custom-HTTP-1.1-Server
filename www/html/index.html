@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Webserv Interactive Test Cases</title>
-  <link href="../styles/style.css" rel="stylesheet"/>
+  <link href="../styles/style.css" rel="stylesheet" />
+  <link href="https://fonts.cdnfonts.com/css/xirod" rel="stylesheet">
 </head>
+
 <body>
   <header>
-    <h1>Webserv Interactive Test Cases</h1>
-    <p>Test various functionalities directly within these interactive cards.</p>
+    <h1>☠️ <span>One</span>Serve ☠️</h1>
   </header>
 
   <div class="container">
-    <!-- Basic GET Request -->
-    <div class="card">
-      <h3>Basic GET Request</h3>
-      <p>Click the button to simulate a GET request.</p>
-      <button onclick="showToast('GET request successful!')">Send GET Request</button>
-    </div>
-
     <!-- Simple Form -->
     <div class="card">
       <h3>Simple Form</h3>
       <p>Submit this form to simulate sending data via POST.</p>
       <form onsubmit="event.preventDefault(); showToast('Form submitted!')">
         <div class="form-group">
-          <label for="name">Name:</label>
-          <input type="text" id="name" placeholder="Enter your name">
+          <label for="login">Login:</label>
+          <input type="text" id="login" placeholder="Enter your Login">
+        </div>
+        <div class="form-group">
+          <label for="file">Attach a file :</label>
+          <input type="file" id="file" name="file">
         </div>
         <div class="form-group">
           <button type="submit">Submit</button>
         </div>
       </form>
     </div>
-
     <!-- File Upload -->
     <div class="card">
       <h3>File Upload</h3>
@@ -49,40 +47,78 @@
       </form>
       <div id="response-message" style="color : green"></div>
     </div>
-
     <!-- Error Handling -->
     <div class="card">
-      <h3>Error Handling</h3>
-      <p>Click the button to simulate a 404 error.</p>
-      <button onclick="showToast('404 Error: Not Found')">Simulate Error</button>
-    </div>
+      <h3>Delete METHOD</h3>
+      <p>Click the button to simulate a DELETE request.</p>
+      <input type="text" id="delete" placeholder="Enter the file name to delete">
 
-    <!-- Concurrent Connections -->
-    <div class="card">
-      <h3>Concurrent Connections</h3>
-      <p>Simulate multiple concurrent connections.</p>
-      <button onclick="showToast('Simulated 10 concurrent connections!')">Simulate</button>
+      <button onclick="HandleDeleteFile()">Delete</button>
     </div>
+  </div>
+
+  <div class="Footer">
+    <span>abquaoub</span>
+    <span>☠️</span>
+    <span>klakbuic</span>
+    <span>☠️</span>
+    <span>Hkarrach</span>
   </div>
 
   <!-- Toast container -->
   <div id="toast" class="toast"></div>
-
   <script>
     // Function to show toast messages
-    function showToast(message) {
+    function HandleDeleteFile() {
+      const file = document.getElementById('delete').value;
+      if (!file) {
+        showToast("Please enter a file name to delete.", true);
+        return;
+      }
+
+      fetch(`/${file}`, {
+        method: 'DELETE'
+      })
+        .then(response => {
+          if (response.status === 404) {
+            throw new Error('File not found');
+          }
+          else if (response.status === 500) {
+            throw new Error('Internal server error');
+          }
+          else if (response.status === 204) {
+            return { status: 'File deleted successfully' };
+          }
+          return response.json();
+        })
+        .then(data => {
+          showToast(`File deleted successfully: ${data.status}`);
+        })
+        .catch(error => {
+          showToast(`Error deleting file: ${error.message}`, true);
+        });
+    }
+
+    function showToast(message, isError = false) {
       const toast = document.getElementById('toast');
       toast.textContent = message;
+
       toast.classList.add('show');
 
-      // Hide toast after 3 seconds
+      if (isError) {
+        toast.classList.add('error');
+        setTimeout(() => {
+          toast.classList.remove('error');
+        }, 3500);
+      }
+      
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
     }
 
     // Handle the file upload form submission
-    document.getElementById('file-upload-form').addEventListener('submit', function(event) {
+    document.getElementById('file-upload-form').addEventListener('submit', function (event) {
       event.preventDefault();  // Prevent default form submission
 
       // Get the file input element
@@ -90,7 +126,7 @@
       const file = fileInput.files[0];  // Get the selected file
 
       if (!file) {
-        showToast("Please select a file to upload.");
+        showToast("Please select a file to upload.", true);
         return;
       }
 
@@ -103,17 +139,18 @@
         method: 'POST',
         body: formData  // Attach the FormData object to the request body
       })
-      .then(response => response.json())  // Assuming the server responds with JSON
-      .then(data => {
-        // Display the server's response (optional)
-        console.log(data);
-        showToast(`File uploaded successfully: ${data.filename}`);
-      })
-      .catch(error => {
-        console.error('Error uploading file:', error);
-        showToast("Error uploading file.");
-      });
+        .then(response => response.json())  // Assuming the server responds with JSON
+        .then(data => {
+          // Display the server's response (optional)
+          console.log(data);
+          showToast(`File uploaded successfully: ${data.filename}`);
+        })
+        .catch(error => {
+          console.error('Error uploading file:', error);
+          showToast("Error uploading file.", true);
+        });
     });
   </script>
 </body>
+
 </html>

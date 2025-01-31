@@ -20,13 +20,11 @@ private:
 	
 	// Tmp holders
 	std::ofstream	_tmp_file;
-	std::string		_tmp_file_name;
 	std::string		_method_tmp;
 	std::string		_version_tmp;
 	// Headers
 	std::string		_curr_header_key;
 	std::string		_curr_header_value;
-
 
 protected:
 	static bool 	isSpace(char c);
@@ -49,10 +47,8 @@ public:
 	RequestParser();
 	~RequestParser();
 
-	std::string		generateUniqueFileName();
-	
 	int				Parse(std::string request);
-	int				ParseMultiPartFormData();
+	std::string		generateUniqueFileName();
 	HttpRequestData getResult();
 };
 

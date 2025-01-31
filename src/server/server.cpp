@@ -91,20 +91,18 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             }
 
             buffer[len] = 0;
+            std::cout << buffer << std::endl;
+            
             int reqParser_res = serv[fd]->req.Parse(buffer);
-
 
             if (reqParser_res)
             {
                 std::cout << "Request parsing completed." << std::endl;
                 serv[fd]->resData = serv[fd]->req.getResult();
-                if (serv[fd]->resData._method == Method::POST)
-                    serv[fd]->req.ParseMultiPartFormData();
                 ADD_Events(fd, EPOLLOUT, EPOLL_CTL_MOD);
             }
             else if (reqParser_res == 0) // 0, continue
             {
-                std::cout << "Reads : " << len << std::endl;
                 std::cout << "Request parsing not completed. Needs More." << std::endl;
             }
             else if (reqParser_res < 0) // < 0, error
@@ -117,9 +115,9 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
         }
         else if (events[i].events & EPOLLOUT)
         {
-            cout << "\n\n+++++++++++++++++++++++++ block respond +++++++++++++++++++++++++\n\n" << std::endl ;
+            cout << "\n\n+++++++++++++++++++++++++ block respond +++++++++++++++++++++++++\n\n"
+                 << std::endl;
             Method::Type method = serv[fd]->resData._method;
-
             switch (method)
             {
             case Method::GET:
@@ -137,15 +135,25 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             }
             case Method::POST:
             {
-                Response::Created(fd);
-                ADD_Events(fd, EPOLLIN, EPOLL_CTL_MOD);
-                delete serv[fd];
-                serv[fd] = new my_class(fd);
-
+                if (serv[fd]->res.Post(fd, serv[fd]->resData))
+                {
+                    ADD_Events(fd, EPOLLIN, EPOLL_CTL_MOD);
+                    delete serv[fd];
+                    serv[fd] = new my_class(fd);
+                }
+                else
+                {
+                }
                 break;
             }
             case Method::DELETE:
             {
+                if (serv[fd]->res.Delete(fd, serv[fd]->resData))
+                {
+                    ADD_Events(fd, EPOLLIN, EPOLL_CTL_MOD);
+                    delete serv[fd];
+                    serv[fd] = new my_class(fd);
+                }
                 break;
             }
             default:

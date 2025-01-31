@@ -1,9 +1,8 @@
 #ifndef REQ_TYPES_HPP
 #define REQ_TYPES_HPP
 
-#include <string>
-#include <map>
 #include "httpTypes.hpp"
+#include <string>
 
 struct Uri
 {
@@ -102,11 +101,11 @@ struct HttpRequestData
 	// Request Method
 	Method::Type						_method;
 	// Uri
-	Uri 								_uri;
+	Uri									_uri;
 	// Http Version
-	Version::Type 						_version;
+	Version::Type						_version;
 	// Headers
-	std::map<std::string, std::string> 	_headers;
+	std::map<std::string, std::string>	_headers;
 
 	// Body
 	PARSE::body_type					_body_type;
@@ -123,6 +122,7 @@ struct HttpRequestData
 
 	// Flags
 	int									_is_multipart;
+	std::string							_tmp_file_name;
 };
 
 #endif

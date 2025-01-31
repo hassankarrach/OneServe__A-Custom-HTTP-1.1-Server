@@ -16,11 +16,19 @@ body {
 header {
 	text-align: center;
 	margin-bottom: 40px;
+	background: linear-gradient(90deg, rgba(231,231,231,0) 0%, rgba(231,231,231,1) 35%, rgba(231,231,231,0) 100%);
+	padding: 10px 0px;
 }
 
 header h1 {
 	font-size: 2.5rem;
 	color: var(--Main-color);
+	font-family: 'Xirod', sans-serif;
+}
+
+header h1 span {
+	color : var(--Main-color-light);
+	opacity: 0.8;
 }
 
 header p {
@@ -45,14 +53,14 @@ header p {
 }
 
 .card:hover {
-	transform: translateY(-10px);
 	box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
 }
 
 .card h3 {
-	font-size: 1.5rem;
+	font-size: 1.3rem;
 	margin-bottom: 15px;
 	color: #264653;
+	font-family: 'Xirod', sans-serif;
 }
 
 .card p {
@@ -65,15 +73,15 @@ header p {
 	margin-bottom: 15px;
 }
 
-.form-group label {
+label {
 	display: block;
 	margin-bottom: 5px;
 	font-size: 0.9rem;
 	color: #333;
 }
 
-.form-group input,
-.form-group button {
+input,
+button {
 	width: 100%;
 	padding: 10px;
 	font-size: 1rem;
@@ -81,16 +89,36 @@ header p {
 	border-radius: 4px;
 }
 
-.form-group button {
+button {
 	background: var(--Main-color);
 	color: #fff;
 	border: none;
 	cursor: pointer;
 	transition: background 0.3s ease;
+	margin-top: 5px;
 }
 
-.form-group button:hover {
+button:hover {
 	background: var(--Main-color-dark);
+}
+
+.Footer{
+	position: absolute;
+	bottom: 10px;
+	background-color: black;
+	display: flex;
+	gap : 5px;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	left: 0;
+	background: linear-gradient(90deg, rgba(231,231,231,0) 0%, rgba(231,231,231,1) 35%, rgba(231,231,231,0) 100%);
+	padding: 10px;
+}
+.Footer span {
+	font-family: 'Xirod', sans-serif;
+	color : #adadad;
+	font-size: 1rem;
 }
 
 .response {
@@ -103,10 +131,12 @@ header p {
 	position: fixed;
 	top: 10px;
 	width: 300px;
-	height: 50px;
+	min-height: 50px;
+	height: auto;
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	padding-left: 10px;
 	right: -300px;
 	/* Start off-screen to the right */
 	background-color: var(--Main-color);
@@ -143,4 +173,12 @@ header p {
 	/* Show toast */
 	transition: right 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.5s ease-out;
 	/* Transition when showing */
+}
+
+.toast.error {
+	background-color: #ff4136;
+}
+
+.toast.error::after {
+	background-color: #d50000;
 }

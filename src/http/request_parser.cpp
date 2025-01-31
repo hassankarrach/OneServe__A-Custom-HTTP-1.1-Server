@@ -1,5 +1,4 @@
 #include "../../includes/http/request_parser.hpp"
-#include <vector>
 
 RequestParser::RequestParser()
 {
@@ -34,6 +33,8 @@ RequestParser::RequestParser()
 
 RequestParser::~RequestParser()
 {
+	if (_tmp_file.is_open())
+		_tmp_file.close();
 }
 
 int RequestParser::Parse(std::string request)
@@ -360,35 +361,61 @@ int RequestParser::Parse(std::string request)
 		}
 		case PARSE::STATE_END_OF_HEADERS_CR:
 		{
-			if (this->_res._headers.find("transfer-encoding") != this->_res._headers.end() && this->_res._headers.find("content-length") != this->_res._headers.end()) // only one of them should be there.
-				return (-1);
-
-			if (this->_res._headers.find("host") == this->_res._headers.end())
-				return (-1);
+			// Syntax Check
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_END_OF_HEADERS_LF;
 			else
 				return (-1);
 
-			if (this->_method_tmp == "GET") // Ignore body for GET, NEED more Attention/Analysis. POST/DELETE.
+			// Gen Checks
+			if (this->_res._headers.find("transfer-encoding") != this->_res._headers.end() && this->_res._headers.find("content-length") != this->_res._headers.end()) // only one of them should be there.
+				return (-1);
+			if (this->_res._headers.find("host") == this->_res._headers.end())
+				return (-1);
+
+			// Spef Checks
+			if (this->_method_tmp == "GET")
+			{
+				// Ignore Content-Length if present
+				// should i return 1, what if the body is too large ?
+				// TWO SOLUTIONS HERE, 1 => Ignore & Drop Connection, 2 => Drain the Socket.
+				// TODO =====> I'll go with ignoring the body as NGINX does, and drop the connection right after. (ADD NEW FLAG in _res that decided weither the connection should be closed after the resp)
+
 				return (1);
+			}
+			else if (this->_method_tmp == "POST")
+			{
+				// Missing Content-Length → 411 Length Required
+				if (this->_res._body_type == PARSE::CONTENT_LENGTH && this->_res._body_length == 0)
+					return (-1);
+
+				// Open tmp file to store the body
+				this->_res._tmp_file_name = "www/tmp/" + generateUniqueFileName();
+				_tmp_file.open(this->_res._tmp_file_name.c_str(), std::ios::binary | std::ios::trunc);
+
+				if (!_tmp_file.is_open())
+					return (-1);
+			}
+			else if (this->_method_tmp == "DELETE")
+			{
+				// Ignore Content-Length if present
+				// TODO : Authorization HEADER, Because, why not ?
+
+				return (1);
+			}
 			break;
 		}
 		case PARSE::STATE_END_OF_HEADERS_LF:
 		{
-			if (this->_res._body_type == PARSE::CONTENT_LENGTH && !this->_res._body_length) // No body
-				return (-1);
+			// TODO : IF i reach here, it means there is a body should be processed. i open the tmp file anyway to store either one read data, or chunked.
+			// TODO :  =============== I WILL MAKE SURE IT ONLY REACHS HERE, IN CASE OF POST REQS. ==================
 
-			if (this->_res._body_type == PARSE::CONTENT_LENGTH && this->_method_tmp != "GET")
+			if (this->_res._body_type == PARSE::CONTENT_LENGTH)
 			{
-				this->_tmp_file_name = generateUniqueFileName();
-				this->_tmp_file.open(_tmp_file_name.c_str(), std::ios::binary | std::ios::trunc);
-				if (!this->_tmp_file.is_open())
-					return (-1);
 				_tmp_file << *current;
 				this->_res._state = PARSE::STATE_BODY_CONTENT_LENGTH;
 			}
-			else if (this->_res._body_type == PARSE::CHUNKED && this->_method_tmp != "GET")
+			else if (this->_res._body_type == PARSE::CHUNKED)
 			{
 				if (isHex(*current))
 				{
@@ -398,19 +425,21 @@ int RequestParser::Parse(std::string request)
 				else
 					return (-1);
 			}
-			else
+			else // NO NEEDS, I GUESS. //todo
 				return (1);
 			break;
 		}
 		case PARSE::STATE_BODY_CONTENT_LENGTH:
 		{
-			if (static_cast<std::streamoff>(this->_res._body_length) > _tmp_file.tellp())
-				_tmp_file << *current; // Write data to the file
-			else
-				return (-1);
+			std::streamoff body_length = static_cast<std::streamoff>(this->_res._body_length);
 
-			if (static_cast<std::streamoff>(this->_res._body_length) == _tmp_file.tellp())
-				return (1);
+			if (body_length >= _tmp_file.tellp())
+			{
+				_tmp_file << *current;
+				if (body_length == _tmp_file.tellp())
+					return (_tmp_file.close(), 1); // Close tmp file, after content-length parsing is done.
+			}
+			// std::cout << *current << "||||" << _tmp_file.tellp() << "_" << body_length << std::endl;
 			break;
 		}
 		case PARSE::STATE_BODY_CHUNKED_SIZE:
@@ -485,7 +514,7 @@ int RequestParser::Parse(std::string request)
 			{
 				this->_res._state = PARSE::STATE_END_OF_CHUNKED_LF;
 				if (!*(current + 1))
-					return (1);
+					return (_tmp_file.close(), 1); // Close tmp file, after chunked parsing is done.
 			}
 			else
 				return (-1);
@@ -502,179 +531,6 @@ int RequestParser::Parse(std::string request)
 		current++;
 	}
 	return (0);
-}
-
-int RequestParser::ParseMultiPartFormData()
-{
-	// TODO : Handle File close. 
-	// Field/Value pairs
-	std::string field_name;
-	std::string field_value;
-	std::ofstream curr_file;
-
-	std::string ROOT = "./www/uploads/";
-
-	if (this->_tmp_file.is_open())
-		this->_tmp_file.close();
-	// Open tmp file
-	std::ifstream MultiPartData(this->_tmp_file_name.c_str(), std::ios::binary);
-	if (!MultiPartData.is_open())
-	{
-		std::cout << "Error: Could not open tmp file." << std::endl;
-		return (0);
-	}
-
-	PARSE::MultiPartFormDataState state = PARSE::STATE_BOUNDARY; // Init.
-
-	// read line by line
-	std::string line;
-	while (std::getline(MultiPartData, line))
-	{
-		if (line[line.length() - 1] != '\r' && state != PARSE::STATE_CONTENT_FILE_DATA) // exept file data, all lines should end with \r\n
-			return (0); // TODO : COMMENTED BECAUSE, THE LAST LINE WILL BE IGNOREDM WHILE IT SHOULD CONTAIN \r\n
-
-		line += "\n";
-
-		switch (state)
-		{
-		case PARSE::STATE_BOUNDARY:
-		{
-			if (line == "--" + this->_res._boundary + "\r\n") //fix this.
-			{
-				state = PARSE::STATE_CONTENT_DISPOSITION;
-				break;
-			}
-			else
-				return (0);
-		}
-		case PARSE::STATE_CONTENT_DISPOSITION:
-		{
-			if (line.find("Content-Disposition: form-data;") == std::string::npos)
-				return (0);
-
-			if (line.find("name=") != std::string::npos)
-				state = PARSE::STATE_CONTENT_FIELD_NAME;
-			else
-				return (0);
-		}
-		/* fall through */
-		case PARSE::STATE_CONTENT_FIELD_NAME:
-		{
-			field_name = line.substr(line.find("name=") + 6);
-			field_name = field_name.substr(0, field_name.find("\""));
-
-			if (line.find("filename=") != std::string::npos)
-				state = PARSE::STATE_CONTENT_FILE_NAME;
-			else
-			{
-				state = PARSE::STATE_CONTENT_EMPTY_LINE;
-				break;
-			}
-		}
-		/* fall through */
-		case PARSE::STATE_CONTENT_FILE_NAME: // Field value is a file
-		{
-			field_value = line.substr(line.find("filename=") + 10);
-			field_value = field_value.substr(0, field_value.find("\""));
-
-			// Open file
-			curr_file.open((ROOT + field_value).c_str(), std::ios::binary);
-			if (!curr_file.is_open())
-				return (0);
-			state = PARSE::STATE_CONTENT_TYPE;
-			break;
-		}
-		case PARSE::STATE_CONTENT_EMPTY_LINE:
-		{
-			if (line == "\r\n")
-			{
-				state = PARSE::STATE_CONTENT_FIELD_VALUE;
-				break;
-			}
-			else
-				return (0);
-		}
-		case PARSE::STATE_CONTENT_FIELD_VALUE:
-		{
-			field_value = line.substr(0, line.length() - 2); // remove \r\n
-
-			this->_res._Fields[field_name] = field_value;
-			state = PARSE::STATE_BOUNDARY;
-			break;
-		}
-		case PARSE::STATE_CONTENT_TYPE:
-		{
-			if (line.find("Content-Type:") != std::string::npos)
-			{
-				this->_res._Fields[field_name] = field_value;
-				state = PARSE::STATE_CONTENT_EMPTY_LINE_AFTER_TYPE;
-				break;
-			}
-			else
-				return (0);
-		}
-		case PARSE::STATE_CONTENT_EMPTY_LINE_AFTER_TYPE:
-		{
-			if (line == "\r\n")
-			{
-				state = PARSE::STATE_CONTENT_FILE_DATA;
-				break;
-			}
-			else
-				return (0);
-		}
-		case PARSE::STATE_CONTENT_FILE_DATA:
-		{
-			if (line == "--" + this->_res._boundary + "--\r\n")
-			{
-				curr_file.close();
-				state = PARSE::STATE_BOUNDARY_END;
-				break;
-			}
-			else if (line == "--" + this->_res._boundary + "\r\n")
-			{
-				curr_file.close();
-				state = PARSE::STATE_CONTENT_DISPOSITION;
-				break;
-			}
-			else
-			{
-				curr_file << line.substr(0, line.length() - 2); // remove \r\n
-				break;
-			}
-		}
-		case PARSE::STATE_EMPTY_LINE_BEFORE_BOUNDARY_END:
-		{
-			std::cout << line << std::endl;
-			if (line == "\r\n")
-			{
-				state = PARSE::STATE_BOUNDARY_END;
-				break;
-			}
-			else
-				return (0);
-		}
-		case PARSE::STATE_BOUNDARY_END:
-		{
-			if (line == "--\r\n")
-			{
-				state = PARSE::STATE_BOUNDARY;
-				break;
-			}
-			else
-				return (0);
-		}
-		default:
-			break;
-		}
-	}
-
-
-	// Close file
-	MultiPartData.close();
-	// Remove tmp file
-	// std::remove(this->_tmp_file_name.c_str());
-	return (1);
 }
 
 std::string RequestParser::generateUniqueFileName()
@@ -707,5 +563,5 @@ HttpRequestData RequestParser::getResult()
 		this->_res._version = Version::HTTP_1_1;
 
 	// Refactor URI HERE
-	return (this->_res);
+	return this->_res;
 }

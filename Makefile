@@ -1,6 +1,6 @@
 # SRCS ============>
 CONFIG = ${addprefix ./src/config/, config_parser.cpp}
-HTTP = ${addprefix ./src/http/, cgi_handler.cpp errors.cpp request.cpp response.cpp request_parser.cpp request_parser_utils.cpp}
+HTTP = ${addprefix ./src/http/, cgi_handler.cpp errors.cpp request.cpp response.cpp HttpDelete.cpp HttpGet.cpp HttpPost.cpp request_parser.cpp request_parser_utils.cpp}
 SERVER = ${addprefix ./src/server/, server.cpp client.cpp connection_pool.cpp t_data.cpp ParsingConfigFile.cpp}
 UTILS = ${addprefix ./src/utils/, utils.cpp logger.cpp}
 TYPES = ${addprefix ./src/types/, httpTypes.cpp reqTypes.cpp resTypes.cpp}

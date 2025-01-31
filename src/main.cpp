@@ -15,6 +15,7 @@ int main(int ac, char **av)
 		Config.ParseFile(av[1]);
 
 		server.CreatServer(Config.getHosts());
+		
 		// t_data info = Config("localhost:6000");  // method for choose  server block
 		// t_map location = info("pwd1"); // method for choose location block
 

@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <sys/types.h>  
-#include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <unistd.h>
 #include <cerrno>
@@ -32,8 +31,6 @@
 
 
 using namespace std;
-
-
 
 
 class my_class
