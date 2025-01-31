@@ -11,6 +11,9 @@
 #include <iomanip>
 #include <ctime>
 
+#include <sys/stat.h>
+#include <dirent.h>
+
 class Response
 {
 private:
@@ -56,6 +59,7 @@ public:
 
 	// Get
 	bool OpenFile(const std::string &resolvedPath, HttpRequestData &req, int client_socket);
+	int ServeDirectory(int client_socket, std::string DirPath);
 	int Serve(int client_socket, HttpRequestData &req);
 	// Post
 	int ParseMultiPartFormData(HttpRequestData &req, int client_socket);

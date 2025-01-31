@@ -17,7 +17,6 @@ bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, i
 	(void)client_socket;
 	(void)req;
 
-	
 	this->_file.open(resolvedPath.c_str(), std::ios::in | std::ios::binary);
 	if (!this->_file.is_open())
 	{
@@ -31,10 +30,20 @@ bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, i
 	return true;
 }
 
+static bool isDirectory(const std::string &path)
+{
+	struct stat statbuf;
+	if (stat(path.c_str(), &statbuf) != 0)
+		return false; // Path does not exist or cannot be accessed
+	return S_ISDIR(statbuf.st_mode);
+}
+
 int Response::Serve(int client_socket, HttpRequestData &req)
 {
 	std::string Root = "www";
-	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + "/" + req._uri.host;
+	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + req._uri.host;
+
+	std::cout << resolvedPath << std::endl;
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb
 
@@ -43,6 +52,10 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		Http301(client_socket);
 		return 1;
 	}
+
+	// check if file is a directory using opendir
+	if (isDirectory(resolvedPath))
+		return ServeDirectory(client_socket, resolvedPath);
 
 	if (!_file.is_open())
 	{
@@ -97,4 +110,49 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 		(this)->WithBody(bufferStr).Generate(1).Send(client_socket);
 		return 0; // Not done, continue through epoll
 	}
+}
+
+int Response::ServeDirectory(int client_socket, std::string DirPath)
+{
+	DIR *dir;
+	struct dirent *ent;
+	std::ostringstream html;
+
+	dir = opendir(DirPath.c_str());
+	if (dir == NULL)
+	{
+		NotFound(DirPath, client_socket);
+		return 1;
+	}
+
+	html << "<html><head><title>Index of " << DirPath << "</title></head><body><h1>Index of " << DirPath << "</h1><hr><pre>";
+
+	// Add a link to the parent directory
+	// if (DirPath != "www")
+	// 	html << "<a href=\"../\">../</a><br>";
+
+	while ((ent = readdir(dir)) != NULL)
+	{
+		std::string name = ent->d_name;
+		if (name == "." || name == "..")
+			continue; // Skip current and parent directory links
+
+		if (isDirectory(DirPath + "/" + name))
+			name += "/"; // Append a slash to indicate a directory
+
+		html << "<a href=\"" << name << "\">" << name << "</a><br>";
+	}
+
+	html << "</pre><hr></body></html>";
+	closedir(dir);
+
+	(this)->WithHttpVersion("HTTP/1.1")
+		.WithStatus(200)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "text/html")
+		.WithBody(html.str())
+		.Generate()
+		.Send(client_socket);
+	
+	return 1;
 }
