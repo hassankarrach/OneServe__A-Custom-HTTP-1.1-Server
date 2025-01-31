@@ -19,10 +19,11 @@
     <div class="card">
       <h3>Simple Form</h3>
       <p>Submit this form to simulate sending data via POST.</p>
-      <form onsubmit="event.preventDefault(); showToast('Form submitted!')">
+
+      <form id="simple-form" method="POST">
         <div class="form-group">
           <label for="login">Login:</label>
-          <input type="text" id="login" placeholder="Enter your Login">
+          <input type="text" id="login" name="login" placeholder="Enter your Login">
         </div>
         <div class="form-group">
           <label for="file">Attach a file :</label>
@@ -33,6 +34,8 @@
         </div>
       </form>
     </div>
+
+
     <!-- File Upload -->
     <div class="card">
       <h3>File Upload</h3>
@@ -55,102 +58,163 @@
 
       <button onclick="HandleDeleteFile()">Delete</button>
     </div>
-  </div>
 
-  <div class="Footer">
-    <span>abquaoub</span>
-    <span>☠️</span>
-    <span>klakbuic</span>
-    <span>☠️</span>
-    <span>Hkarrach</span>
-  </div>
+    <!-- Your Db -->
+    <div class="card">
+      <h3>Your Database</h3>
+      <p>Here you can see the fields you submitted.</p>
+      <ul id="SessionStorage_fields">
 
-  <!-- Toast container -->
-  <div id="toast" class="toast"></div>
-  <script>
-    // Function to show toast messages
-    function HandleDeleteFile() {
-      const file = document.getElementById('delete').value;
-      if (!file) {
-        showToast("Please enter a file name to delete.", true);
-        return;
+      </ul>
+    </div>
+
+    <div class="Footer">
+      <span>abquaoub</span>
+      <span>☠️</span>
+      <span>klakbuic</span>
+      <span>☠️</span>
+      <span>Hkarrach</span>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast" class="toast"></div>
+    <script>
+      // Handle form submission via POST request
+      document.getElementById('simple-form').addEventListener('submit', function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        // Get the form element and create a FormData object
+        const form = event.target;
+        const formData = new FormData(form);  // Capture all form fields including files
+
+        // Send the form data via fetch
+        fetch('/', {
+          method: 'POST',
+          body: formData
+        })
+          .then(response => {
+            if (response.status === 500) {
+              throw new Error('Internal server error');
+            }
+            else if (response.status === 400)
+              throw new Error('Bad request, or file(s) already exists');
+            return response.json();
+          })
+          .then(data => {
+            const result = Object.entries(data.data)
+              .map(([key, value]) => `${key}: ${value ?? '(missing)'}`) // Replace undefined with "(missing)"
+              .join('\n');
+
+              showToast(`Success! Form data received:\n${result}`);
+          })
+          .catch(error => {
+            // console.error('Error submitting form:', error);
+            showToast(error.message, true);
+          });
+      });
+
+
+
+      // === Get all fields from session storage
+      const fields = Object.keys(sessionStorage);
+      const ul = document.getElementById('SessionStorage_fields');
+      fields.forEach(field => {
+        const li = document.createElement('li');
+        li.textContent = `${field}: ${sessionStorage.getItem(field)}`;
+        ul.appendChild(li);
+      });
+
+      // Redirect Detection
+      window.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("redirected")) {
+          setTimeout(() => {
+            showToast("You have been redirected to this page.");
+          }, 500);
+        }
+      });
+      // Function to show toast messages
+      function HandleDeleteFile() {
+        const file = document.getElementById('delete').value;
+        if (!file) {
+          showToast("Please enter a file name to delete.", true);
+          return;
+        }
+
+        fetch(`/${file}`, {
+          method: 'DELETE'
+        })
+          .then(response => {
+            if (response.status === 404) {
+              throw new Error('File not found');
+            }
+            else if (response.status === 500) {
+              throw new Error('Internal server error');
+            }
+            else if (response.status === 204) {
+              return { status: 'File deleted successfully' };
+            }
+            return response.json();
+          })
+          .then(data => {
+            showToast(`File deleted successfully: ${data.status}`);
+          })
+          .catch(error => {
+            showToast(`Error deleting file: ${error.message}`, true);
+          });
       }
+      // Toast functionality
+      function showToast(message, isError = false) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
 
-      fetch(`/${file}`, {
-        method: 'DELETE'
-      })
-        .then(response => {
-          if (response.status === 404) {
-            throw new Error('File not found');
-          }
-          else if (response.status === 500) {
-            throw new Error('Internal server error');
-          }
-          else if (response.status === 204) {
-            return { status: 'File deleted successfully' };
-          }
-          return response.json();
-        })
-        .then(data => {
-          showToast(`File deleted successfully: ${data.status}`);
-        })
-        .catch(error => {
-          showToast(`Error deleting file: ${error.message}`, true);
-        });
-    }
+        toast.classList.add('show');
 
-    function showToast(message, isError = false) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
+        if (isError) {
+          toast.classList.add('error');
+          setTimeout(() => {
+            toast.classList.remove('error');
+          }, 3500);
+        }
 
-      toast.classList.add('show');
-
-      if (isError) {
-        toast.classList.add('error');
         setTimeout(() => {
-          toast.classList.remove('error');
-        }, 3500);
+          toast.classList.remove('show');
+        }, 3000);
       }
-      
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
+      // Handle the file upload form submission
+      document.getElementById('file-upload-form').addEventListener('submit', function (event) {
+        event.preventDefault();  // Prevent default form submission
 
-    // Handle the file upload form submission
-    document.getElementById('file-upload-form').addEventListener('submit', function (event) {
-      event.preventDefault();  // Prevent default form submission
+        // Get the file input element
+        const fileInput = document.getElementById('file');
+        const file = fileInput.files[0];  // Get the selected file
 
-      // Get the file input element
-      const fileInput = document.getElementById('file');
-      const file = fileInput.files[0];  // Get the selected file
+        if (!file) {
+          showToast("Please select a file to upload.", true);
+          return;
+        }
 
-      if (!file) {
-        showToast("Please select a file to upload.", true);
-        return;
-      }
+        // Create a FormData object to hold the file data
+        const formData = new FormData();
+        formData.append('file', file);  // Append the file to the form data
 
-      // Create a FormData object to hold the file data
-      const formData = new FormData();
-      formData.append('file', file);  // Append the file to the form data
-
-      // Send the POST request with the file using fetch
-      fetch('/', {
-        method: 'POST',
-        body: formData  // Attach the FormData object to the request body
-      })
-        .then(response => response.json())  // Assuming the server responds with JSON
-        .then(data => {
-          // Display the server's response (optional)
-          console.log(data);
-          showToast(`File uploaded successfully: ${data.filename}`);
+        // Send the POST request with the file using fetch
+        fetch('/', {
+          method: 'POST',
+          body: formData  // Attach the FormData object to the request body
         })
-        .catch(error => {
-          console.error('Error uploading file:', error);
-          showToast("Error uploading file.", true);
-        });
-    });
-  </script>
+          .then(response => response.json())  // Assuming the server responds with JSON
+          .then(data => {
+            // Display the server's response (optional)
+            console.log(data);
+            showToast(`File uploaded successfully: ${data.filename}`);
+          })
+          .catch(error => {
+            console.error('Error uploading file:', error);
+            showToast("Error uploading file.", true);
+          });
+      });
+    </script>
 </body>
 
 </html>

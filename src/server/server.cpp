@@ -92,7 +92,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
 
             buffer[len] = 0;
             std::cout << buffer << std::endl;
-            
+
             int reqParser_res = serv[fd]->req.Parse(buffer);
 
             if (reqParser_res)
@@ -143,6 +143,8 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
                 }
                 else
                 {
+                    std::cout << "Post failed" << std::endl;
+                    exit (1);
                 }
                 break;
             }

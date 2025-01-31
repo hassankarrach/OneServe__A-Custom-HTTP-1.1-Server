@@ -1,5 +1,17 @@
 #include "../../includes/http/response.hpp"
 
+void Response::Http301(int client_socket)
+{
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(301)
+		.setDefaultHeaders()
+		.WithHeader("Location", "/?redirected=true")
+		.WithHeader("connection", "keep-alive")
+		.Generate()
+		.Send(client_socket);
+}
+
 bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, int client_socket)
 {
 	(void)client_socket;
@@ -25,6 +37,12 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + "/" + req._uri.host;
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb
+
+	if (req._uri.host == "/redirect_me_plz")
+	{
+		Http301(client_socket);
+		return 1;
+	}
 
 	if (!_file.is_open())
 	{

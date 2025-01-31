@@ -2,41 +2,56 @@
 
 void Response::Http201(int client_socket)
 {
-    // Create the response body
-    std::string body = "{\"status\": \"created\", \"filename\": \"filename.txt\"}";
+	// Create the response body
+	std::string body = "{\"status\": \"created\", \"filename\": \"filename.txt\"}";
 
-    std::string content_length = NumberToString(body.size());
+	std::string content_length = NumberToString(body.size());
 
-    // Build the response
-    Response res;
-    res.WithHttpVersion("HTTP/1.1")
-        .WithStatus(201)
-        .setDefaultHeaders()
-        .WithHeader("Content-Type", "application/json")
-        .WithBody(body)
-        .Generate()
-        .Send(client_socket);
+	// Build the response
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(201)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "application/json")
+		.WithBody(body)
+		.Generate()
+		.Send(client_socket);
 }
 
-int Response::ParseMultiPartFormData(HttpRequestData &req)
+static std::string FieldsMapStringify(std::map<std::string, std::string> &Fields)
+{
+	std::string data;
+	data += "{";
+	for (std::map<std::string, std::string>::iterator it = Fields.begin(); it != Fields.end(); it++)
+	{
+		data += "\"" + it->first + "\": \"" + it->second + "\"";
+		// Add comma if not last element
+		if (it != --Fields.end()) // todo -___-
+			data += ", ";
+	}
+	data += "}";
+	return data;
+}
+
+int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 {
 	// TODO : Handle File close.
 	// Field/Value pairs
-	std::string							field_name;
-	std::string							field_value;
-	std::ofstream						curr_file;
+	std::string field_name;
+	std::string field_value;
+	std::ofstream curr_file;
 
-	std::map<std::string, std::string>	Fields;
+	std::map<std::string, std::string> Fields;
 
-	std::string							UPLOAD_DIR = "./www/uploads/";
+	std::string UPLOAD_DIR = "./www/uploads/";
 	// std::string							TMP_DIR = "./www/tmp/";
 
 	// Open tmp file
 	std::ifstream MultiPartData((req._tmp_file_name).c_str(), std::ios::binary);
 	if (!MultiPartData.is_open())
 	{
-		std::cout << "Error: Could not open tmp file." << std::endl;
-		return (0);
+		std::cout << "Error: Could not open tmp file." << std::endl; // TODO : Should be removed later.
+		return (-1);
 	}
 
 	PARSE::MultiPartFormDataState state = PARSE::STATE_BOUNDARY; // Init.
@@ -46,7 +61,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req)
 	while (std::getline(MultiPartData, line))
 	{
 		if (line[line.length() - 1] != '\r' && state != PARSE::STATE_CONTENT_FILE_DATA) // exept file data, all lines should end with \r\n
-			return (0);		
+			return (0);
 
 		line += "\n";
 
@@ -92,10 +107,19 @@ int Response::ParseMultiPartFormData(HttpRequestData &req)
 			field_value = line.substr(line.find("filename=") + 10);
 			field_value = field_value.substr(0, field_value.find("\""));
 
+			// Check if file name is empty
+			if (field_value.empty())
+				return (0);
+
+			// If file exists
+			std::ifstream curr_file_check((UPLOAD_DIR + field_value).c_str(), std::ios::in);
+			if (curr_file_check.is_open())
+				return (0);
+
 			// Open file
 			curr_file.open((UPLOAD_DIR + field_value).c_str(), std::ios::binary);
 			if (!curr_file.is_open())
-				return (0);
+				return (-1);
 			state = PARSE::STATE_CONTENT_TYPE;
 			break;
 		}
@@ -154,7 +178,6 @@ int Response::ParseMultiPartFormData(HttpRequestData &req)
 			}
 			else
 			{
-
 				curr_file << line; // remove \r\n
 				break;
 			}
@@ -188,20 +211,35 @@ int Response::ParseMultiPartFormData(HttpRequestData &req)
 	// Close file
 	MultiPartData.close();
 	remove(req._tmp_file_name.c_str());
+
+	std::string data = FieldsMapStringify(Fields);
+
+	Response res;
+	res.WithHttpVersion("HTTP/1.1")
+		.WithStatus(201)
+		.setDefaultHeaders()
+		.WithHeader("Content-Type", "application/json")
+		.WithBody("{\"data\": " + data + "}")
+		.Generate()
+		.Send(client_socket);
 	return (1);
 }
 
 int Response::Post(int client_socket, HttpRequestData &req)
 {
-	if (ParseMultiPartFormData(req))
+	int res = ParseMultiPartFormData(req, client_socket);
+
+	if (res == 0)
 	{
-		Http201(client_socket);
+		BadRequest("www/html/errors/400.html", client_socket);
 		return (1);
 	}
-	else
+	else if (res < 0)
 	{
-		InternalServerError("www/html/errors/500.html"); // For now.
-		return (0);
+		std::cout << "Internal Server Error" << std::endl;
+		InternalServerError("www/html/errors/500.html", client_socket); // For now.
+		return (1);
 	}
+
 	return (1);
 }
