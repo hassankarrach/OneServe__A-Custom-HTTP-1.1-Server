@@ -33,6 +33,8 @@ static std::string FieldsMapStringify(std::map<std::string, std::string> &Fields
 	return data;
 }
 
+
+// TODO: this doesnt handle file close/remove properly on error.
 int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 {
 	// TODO : Handle File close.
