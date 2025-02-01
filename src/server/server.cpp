@@ -99,6 +99,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             {
                 std::cout << "Request parsing completed." << std::endl;
                 serv[fd]->resData = serv[fd]->req.getResult();
+                std::cout << "[" << serv[fd]->resData._uri.host << "]" << std::endl;
                 ADD_Events(fd, EPOLLOUT, EPOLL_CTL_MOD);
             }
             else if (reqParser_res == 0) // 0, continue

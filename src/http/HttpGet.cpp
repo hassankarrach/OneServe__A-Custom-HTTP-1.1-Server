@@ -43,7 +43,6 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 	std::string Root = "www";
 	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + req._uri.host;
 
-	std::cout << resolvedPath << std::endl;
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb
 
