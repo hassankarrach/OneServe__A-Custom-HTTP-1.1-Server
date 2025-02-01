@@ -98,6 +98,8 @@ struct HttpRequestData
 	PARSE::result						_result;
 	PARSE::state						_state;
 
+	std::string							_Error_msg;
+
 	// Request Method
 	Method::Type						_method;
 	// Uri

@@ -1,5 +1,4 @@
 #include "../../includes/http/response.hpp"
-#include <unistd.h>
 
 void Response::Http204(int client_socket)
 {

@@ -59,7 +59,7 @@ void Response::BadRequest(std::string PageUrl, int client_socket)
 	
 	if (!file.is_open())
 	{
-		DefFile.open("www/html/errors/400.html");
+		DefFile.open("www/errors/400.html");
 		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
 	}
 	else
@@ -83,7 +83,7 @@ void Response::NotFound(std::string PageUrl, int client_socket)
 	
 	if (!file.is_open())
 	{
-		DefFile.open("www/html/errors/404.html");
+		DefFile.open("www/errors/404.html");
 		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
 	}
 	else
@@ -107,7 +107,7 @@ void Response::MethodNotAllowed(std::string PageUrl)
 	
 	if (!file.is_open())
 	{
-		DefFile.open("www/html/errors/405.html");
+		DefFile.open("www/errors/405.html");
 		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
 	}
 	else
@@ -131,7 +131,7 @@ void Response::InternalServerError(std::string PageUrl, int client_socket)
 	
 	if (!file.is_open())
 	{
-		DefFile.open("www/html/errors/500.html");
+		DefFile.open("www/errors/500.html");
 		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
 	}
 	else
@@ -155,7 +155,7 @@ void Response::NotImplemented(std::string PageUrl)
 	
 	if (!file.is_open())
 	{
-		DefFile.open("www/html/errors/501.html");
+		DefFile.open("www/errors/501.html");
 		body.assign((std::istreambuf_iterator<char>(DefFile)), std::istreambuf_iterator<char>());
 	}
 	else
@@ -181,10 +181,8 @@ Response &Response::Generate(int isChunked)
 		{
 			this->_Resp = _version + " " + _Status + "\r\n";
 			for (std::map<std::string, std::string>::iterator it = _Headers.begin(); it != _Headers.end(); it++)
-			{
 				this->_Resp += it->first + ": " + it->second + "\r\n";
-			}
-			this->_Resp += "\r\n"; // this for fix problem video
+			this->_Resp += "\r\n";
 			break;
 		}
 		case RESPONSE::CHUNKED_BODY:

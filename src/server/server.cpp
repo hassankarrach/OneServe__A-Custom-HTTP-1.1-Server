@@ -87,7 +87,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             if (len == 0) // client close connection
             {
                 std::cout << "client close connection" << std::endl;
-                // exit (1);
+                exit (1); //for now
             }
 
             buffer[len] = 0;

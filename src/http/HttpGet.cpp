@@ -41,7 +41,8 @@ static bool isDirectory(const std::string &path)
 int Response::Serve(int client_socket, HttpRequestData &req)
 {
 	std::string Root = "www";
-	std::string resolvedPath = req._uri.host == "/" ? Root + "/html/index.html" : Root + req._uri.host;
+	std::string resolvedPath = req._uri.host[req._uri.host.size() - 1] == '/' ? Root + req._uri.host + "index.html"
+																			  : Root + req._uri.host;
 
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb
@@ -54,7 +55,13 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 
 	// check if file is a directory using opendir
 	if (isDirectory(resolvedPath))
-		return ServeDirectory(client_socket, resolvedPath);
+	{
+		// check if the directory has an index.html file
+		if (access((resolvedPath + "/index.html").c_str(), F_OK) == 0)
+			resolvedPath += "/index.html";
+		else
+			return ServeDirectory(client_socket, resolvedPath);
+	}
 
 	if (!_file.is_open())
 	{
@@ -62,30 +69,12 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 			return 1; // Error, file not found
 
 		if (_fileSize < chunk_threshold)
-		{
-			std::string body;
-			try
-			{
-				body.assign((std::istreambuf_iterator<char>(_file)), std::istreambuf_iterator<char>());
-			}
-			catch (const std::exception &e)
-			{
-				std::cout << e.what() << std::endl;
-				std::cout << resolvedPath << std::endl; // this Prints : [ www/ ]
-				std::cout << "here ------" << std::endl;
-				return (0);
-			}
-			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithBody(body).Generate().Send(client_socket);
-
-			_file.close();
-			return 1; // Done
-		}
+			return ServeFile(client_socket, resolvedPath, req);
 		else
 		{
-			// Send headers for chunked transfer encoding
 			(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithHeader("Transfer-Encoding", "chunked").Generate(1).Send(client_socket);
 			_ChunkedState = RESPONSE::CHUNKED_BODY;
-			return 0; // Continue through epoll
+			return 0;
 		}
 	}
 
@@ -111,6 +100,18 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 	}
 }
 
+int Response::ServeFile(int client_socket, std::string resolvedPath, HttpRequestData &req)
+{
+	std::string body;
+
+	body.assign((std::istreambuf_iterator<char>(_file)), std::istreambuf_iterator<char>()); // TODO May fail here, in case of file not found or other errors.
+
+	(this)->WithHttpVersion(Version::toString(req._version)).WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", GetMimeType(resolvedPath)).WithBody(body).Generate().Send(client_socket);
+
+	_file.close();
+	return 1;
+}
+
 int Response::ServeDirectory(int client_socket, std::string DirPath)
 {
 	DIR *dir;
@@ -118,40 +119,35 @@ int Response::ServeDirectory(int client_socket, std::string DirPath)
 	std::ostringstream html;
 
 	dir = opendir(DirPath.c_str());
+
 	if (dir == NULL)
 	{
-		NotFound(DirPath, client_socket);
+		InternalServerError("www/html/errors/500.html", client_socket);
 		return 1;
 	}
 
 	html << "<html><head><title>Index of " << DirPath << "</title></head><body><h1>Index of " << DirPath << "</h1><hr><pre>";
-
-	// Add a link to the parent directory
-	// if (DirPath != "www")
-	// 	html << "<a href=\"../\">../</a><br>";
 
 	while ((ent = readdir(dir)) != NULL)
 	{
 		std::string name = ent->d_name;
 		if (name == "." || name == "..")
 			continue; // Skip current and parent directory links
-
 		if (isDirectory(DirPath + "/" + name))
 			name += "/"; // Append a slash to indicate a directory
 
-		html << "<a href=\"" << name << "\">" << name << "</a><br>";
+		// Generate relative path safely
+		std::string relativePath = DirPath;
+		if (relativePath.compare(0, 4, "www/") == 0) // Ensure "www/" prefix exists
+			relativePath = relativePath.substr(4);
+
+		html << "<a href=\"" << relativePath + "/" + name << "\">" << name << "</a><br>";
 	}
 
 	html << "</pre><hr></body></html>";
 	closedir(dir);
 
-	(this)->WithHttpVersion("HTTP/1.1")
-		.WithStatus(200)
-		.setDefaultHeaders()
-		.WithHeader("Content-Type", "text/html")
-		.WithBody(html.str())
-		.Generate()
-		.Send(client_socket);
-	
+	(this)->WithHttpVersion("HTTP/1.1").WithStatus(200).setDefaultHeaders().WithHeader("Content-Type", "text/html").WithBody(html.str()).Generate().Send(client_socket);
+
 	return 1;
 }

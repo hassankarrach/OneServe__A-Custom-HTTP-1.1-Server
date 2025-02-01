@@ -14,6 +14,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+// for access
+#include <unistd.h>
+
 class Response
 {
 private:
@@ -59,8 +62,9 @@ public:
 
 	// Get
 	bool OpenFile(const std::string &resolvedPath, HttpRequestData &req, int client_socket);
-	int ServeDirectory(int client_socket, std::string DirPath);
 	int Serve(int client_socket, HttpRequestData &req);
+	int ServeDirectory(int client_socket, std::string DirPath);
+	int ServeFile(int client_socket, std::string resolvedPath, HttpRequestData &req);
 	// Post
 	int ParseMultiPartFormData(HttpRequestData &req, int client_socket);
 	int Post(int client_socket, HttpRequestData &req);
