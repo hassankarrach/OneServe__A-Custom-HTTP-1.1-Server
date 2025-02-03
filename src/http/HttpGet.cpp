@@ -21,7 +21,7 @@ bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, i
 	if (!this->_file.is_open())
 	{
 		// File not found
-		NotFound(resolvedPath, client_socket);
+		NotFound(client_socket);
 		return false;
 	}
 	this->_file.seekg(0, std::ios::end);
@@ -122,7 +122,7 @@ int Response::ServeDirectory(int client_socket, std::string DirPath)
 
 	if (dir == NULL)
 	{
-		InternalServerError("www/html/errors/500.html", client_socket);
+		InternalServerError(client_socket);
 		return 1;
 	}
 

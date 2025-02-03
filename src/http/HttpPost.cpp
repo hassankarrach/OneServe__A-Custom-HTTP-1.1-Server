@@ -51,10 +51,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 	// Open tmp file
 	std::ifstream MultiPartData((req._tmp_file_name).c_str(), std::ios::binary);
 	if (!MultiPartData.is_open())
-	{
-		std::cout << "Error: Could not open tmp file." << std::endl; // TODO : Should be removed later.
-		return (-1);
-	}
+		return (req._Error_msg = "Could not open tmp file", -1);
 
 	PARSE::MultiPartFormDataState state = PARSE::STATE_BOUNDARY; // Init.
 
@@ -63,7 +60,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 	while (std::getline(MultiPartData, line))
 	{
 		if (line[line.length() - 1] != '\r' && state != PARSE::STATE_CONTENT_FILE_DATA) // exept file data, all lines should end with \r\n
-			return (0);
+			return (req._Error_msg = "Invalid Line Ending", 0);
 
 		line += "\n";
 
@@ -77,17 +74,17 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Boundary", 0);
 		}
 		case PARSE::STATE_CONTENT_DISPOSITION:
 		{
 			if (line.find("Content-Disposition: form-data;") == std::string::npos)
-				return (0);
+				return (req._Error_msg = "Invalid Content-Disposition", 0);
 
 			if (line.find("name=") != std::string::npos)
 				state = PARSE::STATE_CONTENT_FIELD_NAME;
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Field Name", 0);
 		}
 		/* fall through */
 		case PARSE::STATE_CONTENT_FIELD_NAME:
@@ -111,17 +108,17 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 
 			// Check if file name is empty
 			if (field_value.empty())
-				return (0);
+				return (req._Error_msg = "Invalid File Name", 0);
 
 			// If file exists
 			std::ifstream curr_file_check((UPLOAD_DIR + field_value).c_str(), std::ios::in);
 			if (curr_file_check.is_open())
-				return (0);
+				return (req._Error_msg = "File already exists", 0);
 
 			// Open file
 			curr_file.open((UPLOAD_DIR + field_value).c_str(), std::ios::binary);
 			if (!curr_file.is_open())
-				return (-1);
+				return (req._Error_msg = "Could not open file", -1);
 			state = PARSE::STATE_CONTENT_TYPE;
 			break;
 		}
@@ -133,7 +130,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Empty Line", 0);
 		}
 		case PARSE::STATE_CONTENT_FIELD_VALUE:
 		{
@@ -152,7 +149,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Content-Type", 0);
 		}
 		case PARSE::STATE_CONTENT_EMPTY_LINE_AFTER_TYPE:
 		{
@@ -162,7 +159,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Empty Line After Type", 0);
 		}
 		case PARSE::STATE_CONTENT_FILE_DATA:
 		{
@@ -193,7 +190,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Empty Line Before Boundary End", 0);
 		}
 		case PARSE::STATE_BOUNDARY_END:
 		{
@@ -203,7 +200,7 @@ int Response::ParseMultiPartFormData(HttpRequestData &req, int client_socket)
 				break;
 			}
 			else
-				return (0);
+				return (req._Error_msg = "Invalid Boundary End", 0);
 		}
 		default:
 			break;
@@ -232,16 +229,9 @@ int Response::Post(int client_socket, HttpRequestData &req)
 	int res = ParseMultiPartFormData(req, client_socket);
 
 	if (res == 0)
-	{
-		BadRequest("www/html/errors/400.html", client_socket);
-		return (1);
-	}
+		BadRequest(client_socket);
 	else if (res < 0)
-	{
-		std::cout << "Internal Server Error" << std::endl;
-		InternalServerError("www/html/errors/500.html", client_socket); // For now.
-		return (1);
-	}
+		InternalServerError(client_socket); // For now.
 
 	return (1);
 }

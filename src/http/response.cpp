@@ -50,10 +50,10 @@ void Response::Http200(int client_socket)
 		.Generate()
 		.Send(client_socket);
 }
-void Response::BadRequest(std::string PageUrl, int client_socket)
+void Response::BadRequest(int client_socket)
 {
 	std::ifstream DefFile;
-	std::ifstream file(PageUrl.c_str());
+	std::ifstream file("tkharbi9a");
 
 	std::string body;
 	
@@ -74,10 +74,10 @@ void Response::BadRequest(std::string PageUrl, int client_socket)
 		.Generate()
 		.Send(client_socket);
 }
-void Response::NotFound(std::string PageUrl, int client_socket)
+void Response::NotFound(int client_socket)
 {
 	std::ifstream DefFile;
-	std::ifstream file(PageUrl.c_str());
+	std::ifstream file("tkharbi9a");
 
 	std::string body;
 	
@@ -122,10 +122,10 @@ void Response::MethodNotAllowed(std::string PageUrl)
 		.Generate()
 		.Send(1);
 }
-void Response::InternalServerError(std::string PageUrl, int client_socket)
+void Response::InternalServerError(int client_socket)
 {
 	std::ifstream DefFile;
-	std::ifstream file(PageUrl.c_str());
+	std::ifstream file("tkharbi9a");
 
 	std::string body;
 	

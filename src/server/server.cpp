@@ -60,14 +60,15 @@ void Server::ADD_Events(int _fd, EPOLL_EVENTS ev, int op)
 
 void Server::ForEachEvents(epoll_event *events, int n_events)
 {
-
     char buffer[4096];
     int fd;
+
     for (int i = 0; i < n_events; i++)
     {
         fd = events[i].data.fd;
         if (this->find(fd))
         {
+            // Accept connection code remains the same
             std::cout << "\n\n============================ block connection ============================\n\n"
                       << std::endl;
             fd = accept(fd, NULL, NULL);
@@ -76,41 +77,52 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
             event.events = EPOLLIN;
             event.data.fd = fd;
             epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
-            // ADD_Events(events[i].data.fd , EPOLLOUT ,  EPOLL_CTL_MOD );
         }
         else if (events[i].events & EPOLLIN)
         {
-            cout << "\n\n--------------------------block request --------------------------\n\n"
-                 << std::endl;
-            int len = recv(fd, &buffer, sizeof(buffer), MSG_DONTWAIT);
+            std::cout << "\n\n-------------------------- block request --------------------------\n\n"
+                      << std::endl;
+            ssize_t len = recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
 
-            if (len == 0) // client close connection
+            if (len < 0)
             {
-                std::cout << "client close connection" << std::endl;
-                exit (1); //for now
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    continue;
+                
+                std::cout << "Receive error: " << strerror(errno) << std::endl;
+                close(fd);
+                serv.erase(fd);
+                continue;
             }
 
-            buffer[len] = 0;
-            std::cout << buffer << std::endl;
+            if (len == 0)
+            {
+                std::cout << "Connection closed by client" << std::endl;
+                close(fd);
+                serv.erase(fd);
+                continue;
+            }
 
-            int reqParser_res = serv[fd]->req.Parse(buffer);
+            if (static_cast<size_t>(len) < sizeof(buffer))
+                buffer[len] = '\0';
 
-            if (reqParser_res)
+            int reqParser_res = serv[fd]->req.Parse(std::string(buffer, len));
+
+            if (reqParser_res == 1)
             {
                 std::cout << "Request parsing completed." << std::endl;
                 serv[fd]->resData = serv[fd]->req.getResult();
-                std::cout << "[" << serv[fd]->resData._uri.host << "]" << std::endl;
                 ADD_Events(fd, EPOLLOUT, EPOLL_CTL_MOD);
             }
-            else if (reqParser_res == 0) // 0, continue
+            else if (reqParser_res == 0)
             {
                 std::cout << "Request parsing not completed. Needs More." << std::endl;
             }
-            else if (reqParser_res < 0) // < 0, error
+            else
             {
-                std::cout << "Bad Request" << std::endl;
-                exit(1);
-                // close(fd);
+                // std::cout << "Bad Request: " << serv[fd]->req.getResult()._Error_msg << std::endl;
+                Response::BadRequest(fd);
+                close(fd);
                 // serv.erase(fd);
             }
         }
@@ -145,7 +157,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
                 else
                 {
                     std::cout << "Post failed" << std::endl;
-                    exit (1);
+                    exit(1);
                 }
                 break;
             }

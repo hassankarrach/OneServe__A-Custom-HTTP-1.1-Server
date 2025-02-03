@@ -183,35 +183,28 @@
       }
       // Handle File upload
 
-
-
-      // Handle the file upload form submission
+      // Handle the file upload
       document.getElementById('file-upload-form').addEventListener('submit', function (event) {
-        event.preventDefault();  // Prevent default form submission
+        event.preventDefault();
 
-        // Get the file input element
         const fileInput = document.getElementById('file_uplaod');
-        const file = fileInput.files[0];  // Get the selected file
+        const file = fileInput.files[0];
 
         if (!file) {
           showToast("Please select a file to upload.", true);
           return;
         }
 
-        // Create a FormData object to hold the file data
         const formData = new FormData();
-        formData.append('file', file);  // Append the file to the form data
+        formData.append('file', file);
 
-        // Send the POST request with the file using fetch
         fetch('/', {
           method: 'POST',
-          body: formData  // Attach the FormData object to the request body
+          body: formData
         })
-          .then(response => response.json())  // Assuming the server responds with JSON
+          .then(response => response.json())
           .then(data => {
-            // Display the server's response (optional)
-            console.log(data);
-            showToast(`File uploaded successfully: ${data.filename}`);
+            showToast(`File uploaded successfully: ${data.data.file}`);
           })
           .catch(error => {
             console.error('Error uploading file:', error);

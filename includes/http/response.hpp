@@ -43,10 +43,10 @@ public:
 	// Redirection
 	static void Http301(int client_socket);
 
-	static void BadRequest(std::string PageUrl, int client_socket);
-	static void NotFound(std::string PageUrl, int client_socket);
+	static void BadRequest(int client_socket);
+	static void NotFound(int client_socket);
 	static void MethodNotAllowed(std::string PageUrl);
-	static void InternalServerError(std::string PageUrl, int client_socket);
+	static void InternalServerError(int client_socket);
 	static void NotImplemented(std::string PageUrl);
 
 	// Methods

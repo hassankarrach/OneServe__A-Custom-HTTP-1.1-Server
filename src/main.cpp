@@ -54,7 +54,7 @@ int main(int ac, char **av)
 					   - unsuported Content-Type
 					   - Unauthorized request
 					   - 429 Too Many Requests
-	TODO 
+	TODO
 	7 - allowed methods
 
 	TODO

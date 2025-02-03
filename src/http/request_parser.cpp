@@ -45,6 +45,7 @@ int RequestParser::Parse(std::string request)
 	const char *end = begin + request.length();
 	const char *current = begin;
 
+
 	while (current != end)
 	{
 		switch (this->_res._state)
@@ -371,7 +372,6 @@ int RequestParser::Parse(std::string request)
 					this->_res._body_type = PARSE::CHUNKED;
 				else
 					return (this->_res._Error_msg = "Invalid Transfer-Encoding", -1);
-
 			}
 			else
 				this->_res._body_type = PARSE::NO_BODY;
@@ -388,7 +388,6 @@ int RequestParser::Parse(std::string request)
 					else
 						return (this->_res._Error_msg = "Invalid Content-Type : Missing Boundary", -1);
 				}
-
 			}
 
 			// Spef Checks
@@ -425,10 +424,17 @@ int RequestParser::Parse(std::string request)
 			// TODO : IF i reach here, it means there is a body should be processed. i open the tmp file anyway to store either one read data, or chunked.
 			// TODO :  =============== I WILL MAKE SURE IT ONLY REACHS HERE, IN CASE OF POST REQS. ==================
 
+			// TODO : I MAY ADD A CHECK LATER IF I ALREADY WRITE THE FULL BODY IN THE FILE JUST HERE.
 			if (this->_res._body_type == PARSE::CONTENT_LENGTH)
 			{
-				_tmp_file << *current;
+				size_t BytesToWrite = std::min(static_cast<size_t>(end - current), this->_res._body_length);
+				_tmp_file.write(current, BytesToWrite);
+				this->_res._body_length -= BytesToWrite;
+				current += BytesToWrite;
 				this->_res._state = PARSE::STATE_BODY_CONTENT_LENGTH;
+				if (this->_res._body_length == 0)
+					return (_tmp_file.close(), 1);
+				continue; // Confusing, but here im avoiding the current++ at the end of the loop, i already incremented it here.
 			}
 			else if (this->_res._body_type == PARSE::CHUNKED)
 			{
@@ -446,16 +452,14 @@ int RequestParser::Parse(std::string request)
 		}
 		case PARSE::STATE_BODY_CONTENT_LENGTH:
 		{
-			std::streamoff body_length = static_cast<std::streamoff>(this->_res._body_length);
+			size_t BytesToWrite = std::min(static_cast<size_t>(end - current), this->_res._body_length);
 
-			if (body_length >= _tmp_file.tellp())
-			{
-				_tmp_file << *current;
-				if (body_length == _tmp_file.tellp())
-					return (_tmp_file.close(), 1); // Close tmp file, after content-length parsing is done.
-			}
-			// std::cout << *current << "||||" << _tmp_file.tellp() << "_" << body_length << std::endl;
-			break;
+			_tmp_file.write(current, BytesToWrite);
+			this->_res._body_length -= BytesToWrite;
+			current += BytesToWrite;
+			if (this->_res._body_length == 0)
+				return (_tmp_file.close(), 1);
+			continue;
 		}
 		case PARSE::STATE_BODY_CHUNKED_SIZE:
 		{
