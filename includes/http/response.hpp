@@ -44,7 +44,7 @@ public:
 	static void Http301(int client_socket);
 
 	static void BadRequest(int client_socket);
-	static void NotFound(int client_socket);
+	static void NotFound(int client_socket, HttpRequestData &req);
 	static void MethodNotAllowed(std::string PageUrl);
 	static void InternalServerError(int client_socket);
 	static void NotImplemented(std::string PageUrl);

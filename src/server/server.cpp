@@ -80,6 +80,9 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
         }
         else if (events[i].events & EPOLLIN)
         {
+
+
+            // begin 
             std::cout << "\n\n-------------------------- block request --------------------------\n\n"
                       << std::endl;
             ssize_t len = recv(fd, buffer, sizeof(buffer), MSG_DONTWAIT);
@@ -125,6 +128,7 @@ void Server::ForEachEvents(epoll_event *events, int n_events)
                 close(fd);
                 // serv.erase(fd);
             }
+            // end
         }
         else if (events[i].events & EPOLLOUT)
         {

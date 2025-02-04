@@ -17,7 +17,7 @@ int Response::Delete(int client_socket, HttpRequestData &req)
 	// Check if the file exists in cpp
 	if (access(File.c_str(), F_OK) == -1)
 	{
-		NotFound(client_socket);
+		NotFound(client_socket, req);
 		return 1;
 	}
 

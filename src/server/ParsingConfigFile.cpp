@@ -1,59 +1,37 @@
-
 #include "../../includes/server/ParsingConfigFile.hpp"
 
 string checks = "";
+
+map<int , void (ParsingConfigFile::*)()> funcArray;
+map<int , void (ParsingConfigFile::*)()> funcSave;
 
 t_data::t_data() {}
 
 void ParsingConfigFile::test() {}
 
-void split(string &s , vector<string > &data)
+ParsingConfigFile::ParsingConfigFile(){}
+
+vector<addrinfo *>ParsingConfigFile::getHosts()
 {
-    stringstream  obj(s);
-    string word;
-    while (obj >> word)
-        data.push_back(word);
+    return save_addr;
 }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-t_data ParsingConfigFile::operator()(const char *host)
+t_data ParsingConfigFile::operator()(const char *_str)
 {
+    string str = _str;
+    getKeyValue(str , ':');
 
-    vector<pair<string , t_data> >::iterator it = blocks.begin();
-    t_data save;
+    vector<t_data>::iterator it = blocks.begin();
     while(it != blocks.end())
     {
-        if(!it->first.compare(host))
-        {
-            save =  it->second;
-            break;
-        }
+        if(it->server.find("host" , key.data()) && it->server.find("port" , value.data()))
+            return(*it);
         it++;
     }
-    return save;
-}
-
-
-
-ParsingConfigFile::ParsingConfigFile()
-{
-    res = NULL;
-
+    throwServerError(true , "Error host is not exist");
+    return *it;
 }
 
 ParsingConfigFile::~ParsingConfigFile()
@@ -65,24 +43,10 @@ ParsingConfigFile::~ParsingConfigFile()
 };
 
 
-int strtrim(string &str , const char *sharset)
-{
-    size_t fpos = str.find_first_not_of(sharset);
-    size_t lpos = str.find_last_not_of(sharset);
-    if(fpos == str.npos)
-        fpos = 0;
-    str = str.substr(fpos , lpos - fpos + 1);
-    return 0;
-}
-
 int ParsingConfigFile::CheckCharacter(char c)
 {
-
     for(unsigned long i = 0;i < func_ptr.size();i++)
-    {
-        if(func_ptr[i](c))
-            return 1;
-    }
+        if(func_ptr[i](c)) return 1;
     return (checks.find(c) != checks.npos);
 }
 
@@ -90,90 +54,95 @@ int ParsingConfigFile::CheckCharacter(char c)
 void ParsingConfigFile::CheckString(string &str)
 {
     for(unsigned long i = 0; i < str.size() ; i++)
-    {
-        if(!CheckCharacter(str[i]))
-        {
-            std::cout << str << std::endl;
-            throw(std::logic_error("webserv : Invalid String"));
-        }
-    }
+        throwServerError(!CheckCharacter(str[i]) , "webserv : Invalid String");
 }
 
 
 
-void ParsingConfigFile::CheckArrayOfValue(vector<string> &data , int first , int size)
+void ParsingConfigFile::CheckArrayOfValue(vector<string> &data , int flag)
 {
-    if(!limit && data.size() >  1)
-        throw(std::range_error("werbserv : invalid arguments"));
-
-    for(size_t i = 0; i < data.size(); i++)
+    stringstream  obj(value);
+    string word;
+    size_t i = 0;
+    for(i = 0; obj >> word; i++)
     {
-        if(!flag && find(&VALUES[first] , &VALUES[first + size] , data[i]) == &VALUES[first + size])
-            throw(std::range_error("werbserv : invalid value"));
-        else
-            CheckString(data[i]);
+        throwServerError(!flag && !count(&VALUES[0] ,&VALUES[3] , word) , "werbserv : invalid value1" );
+        data.push_back(word);
     }
+    throwServerError(flag == 1 && i != 1 , "werbserv : invalid value2" );
+    throwServerError(flag == 3  && i != 2 , "werbserv : invalid value3" );
 }
 
 
 
 void ParsingConfigFile::CheckBlockErrors()
 {
-    if(key.length() != 3 || key[0] < '3' || key[0] > '5')
-        throw(std::range_error("webserv : must btw 300 to 599"));
-
+    throwServerError((key.length() != 3 || key[0] < '3' || key[0] > '5') , "webserv : must btw 300 to 599");
     func_ptr.push_back(isdigit); CheckString(key);
-    func_ptr[0] = isalnum; checks = "./_" ; CheckString(value);
-    this->data.error[key] = value;
-    
-}
 
+    flag = 1;
+    throwServerError(data.error.find(key) , "webserve : dupblicate key error");
+    CheckArrayOfValue(data.error[key] , flag);
+}
 
 void ParsingConfigFile::CheckBlockLocation()
 {
-    if(find(KEYOFLOCATION , KEYOFLOCATION + 6 , key) == (KEYOFLOCATION + 6))
-        throw(std::runtime_error("webserv : location this key is not exist"));
+    throwServerError(!count(KEYOFLOCATION , KEYOFLOCATION + 7 , key) ,  "webserv : location this key is not exist");
 
-    split(value , pair_location.second[key]);
+    flag = (key[0] == 'c') * 2 + (key[0] == 'm') * 0 + !(key[0] == 'm') * 1;
+    throwServerError(key[0] != 'c' && loc.find(key) , "webserve : dupblicate key location");
+    CheckArrayOfValue(loc[key] , flag);
 }
 
 
 void ParsingConfigFile::CheckInfoServer()
 {
-    if(find(KEYOFSERVER , KEYOFSERVER + 4 , key) == (KEYOFSERVER + 4))
-        throw(std::runtime_error("webserv : server this key is not exist"));
-    split(value , data.server[key]);
+    throwServerError(!count(KEYOFSERVER , KEYOFSERVER + 4 , key) ,  "webserv : server this key is not exist");
+
+    flag = (key[0] == 'p' || key[0] == 's') * 2 + !(key[0] == 'p' || key[0] == 's');
+    throwServerError(data.server.find(key) , "webserve : dupblicate key server");
+    CheckArrayOfValue(data.server[key] , flag);
+    
+    if(key[0] == 'b')
+    {
+        value = data.server[key][0];
+        checks = "KM"; func_ptr.push_back(isdigit);
+        CheckString(value);
+        size_t pos = value.find_first_of("KM");
+        throwServerError(pos != value.length() - 1 && pos != value.npos  , "Error in body size");
+    }
 }
 
-void ParsingConfigFile::getKeyValue(string &line)
+void ParsingConfigFile::getKeyValue(string &line , char set)
 {
-    size_t c = line.find("="); line.at(c);
+    size_t c;
+    c = line.find(set);
+    throwServerError(c == line.npos , "webserv : Error line");
 
     key = line.substr(0 , c);
     value = line.substr(c + 1, line.npos);
-    strtrim(key , " \t");strtrim(value , " \t");
-    checks = "_"; func_ptr.push_back(isalnum);
-    CheckString(key);
+    strtrim(key , " \t");
 }
 
 
-
-void ParsingConfigFile::Checkblock(t_data &info)
+void ParsingConfigFile::ft_getaddrinfo()
 {
-    limit = 0; flag = 1;
-    func_ptr.push_back(isalnum); checks = "/." ;
-    CheckArrayOfValue(info.location.begin()->second["uri"] , 0 , 0);
+    vector<string> it;
+    const char *host;
+    addrinfo *res;
+    int CodeErr; 
 
-    limit = 1;
-    CheckArrayOfValue(info.location.begin()->second["methods"] , 2 , 3);
+    it = data.server[string("port")];
+    host = data.server["host"].data();
+
+    for(unsigned long i = 0; i < it.size() ; i++)
+    {
+        res = NULL;
+        CodeErr =  getaddrinfo(host, it[i].data(), NULL ,&res);
+        throwServerError(CodeErr  , gai_strerror(CodeErr));
+        save_addr.push_back(res);
+    }
 }
-
-
-vector<addrinfo *>ParsingConfigFile::getHosts()
-{
-    return save_addr;
-}
-
 
 
 
@@ -182,22 +151,17 @@ void ParsingConfigFile::push_back_data()
     push_back_location();
     if(data.error.empty() && data.server.empty() && data.location.empty())
         return;
-    t_data _data  = data;
-    save_block.second = _data;
-    save_block.first = save_block.second.server["host"][0].data();
-    save_block.first += ":";
-    save_block.first += save_block.second.server["port"][0].data();
-    
-    pair<string , t_data>  save = save_block;
-    res = NULL;
-    int CodeErr =  getaddrinfo(data.server["host"][0].data(), data.server["port"][0].data(), NULL ,&res);
 
-    if(CodeErr < 0)
-        throw(std::logic_error(gai_strerror(CodeErr)));
-    
-    save_addr.push_back(res);
-    blocks.push_back(save);
+    { // add default data server
+    data.error.insert("404" , "www/errors/400.html"); // TODO:
+    data.server.insert("host" , "127.0.0.1");
+    data.server.insert("port" , "8080");
+    data.server.insert("body_size" , "4096K");
+    data.server.insert("server_name" , "localhost");
+    }
 
+    ft_getaddrinfo();
+    blocks.push_back(data);
     data.server.clear(); data.error.clear(); data.location.clear();
 }
 
@@ -205,55 +169,55 @@ void ParsingConfigFile::push_back_data()
 
 void ParsingConfigFile::push_back_location()
 {
-    if(pair_location.second.empty())
+    if(loc.empty())
         return;
 
-    pair<string , map<string , vector<string> > > save;
-    pair_location.first = pair_location.second["uri"][0].data();
-    save = pair_location;
-    data.location.push_back(save);
-    Checkblock(data);
+    { // add default data  location
+    loc.insert("root" , "/usr/share/webserve/");
+    
+    }
 
-    pair_location.first.clear(); pair_location.second.clear();
+    data.location.push_back(loc);
+    loc.clear(); loc.clear();
 }
 
+
+void _fill()
+{
+    funcArray[8] = &ParsingConfigFile::CheckInfoServer;
+    funcArray[17] = &ParsingConfigFile::CheckBlockLocation;
+    funcArray[15] = &ParsingConfigFile::CheckBlockErrors;
+
+    funcSave[8] = &ParsingConfigFile::push_back_data;
+    funcSave[17] = &ParsingConfigFile::push_back_location;
+    funcSave[15] = &ParsingConfigFile::test;
+}
 
 
 void ParsingConfigFile::ParseFile(const char *filename)
 {
     string line;
-    int flag = 0;
+    int flag;
     std::ifstream file(filename , ios::out);
-
-    map<int , void (ParsingConfigFile::*)()> funcArray;
-    funcArray[8] = &ParsingConfigFile::CheckInfoServer;
-    funcArray[17] = &ParsingConfigFile::CheckBlockLocation;
-    funcArray[15] = &ParsingConfigFile::CheckBlockErrors;
-
-    map<int , void (ParsingConfigFile::*)()> funcSave;
-    funcSave[8] = &ParsingConfigFile::push_back_data;
-    funcSave[17] = &ParsingConfigFile::push_back_location;
-    funcSave[15] = &ParsingConfigFile::test;
-
-
-    while(std::getline(file , line) && !strtrim(line , " \t"))
+    
+    flag = 0;
+    _fill();
+    for(int i = 0; std::getline(file , line) && strtrim(line , " \t") ; i++)
     {
         if(line.empty()) continue;
-        
-        if((find(NAMESOFBLOCKS, NAMESOFBLOCKS + 3, line) != (NAMESOFBLOCKS + 3)))
+        if(count(NAMESOFBLOCKS, NAMESOFBLOCKS + 3, line))
         {
             flag = (int)line.size();
             (this->*funcSave[flag])();
             continue;
         }
-
-        getKeyValue(line);
+        throwServerError(!flag  , "webserve : Error");
+        
+        getKeyValue(line , '=');
         (this->*funcArray[flag])();
-
-        key.clear(); value.clear(); line.clear();
-        checks.clear(); func_ptr.clear();
+        
+        key.clear(); value.clear();
+        line.clear();func_ptr.clear();
     }
     (this->*funcSave[8])();
-
 }
-

@@ -1,5 +1,5 @@
 #include "../../includes/http/request_parser.hpp"
-
+#include "../../includes/server/ParsingConfigFile.hpp"
 RequestParser::RequestParser()
 {
 	// Tmp holders
@@ -9,6 +9,7 @@ RequestParser::RequestParser()
 	this->_version_tmp = "";
 	// Res
 	// ========================================
+	// this->_res._config_res;
 	this->_res._result = PARSE::RES_INCOMPLETE;
 	this->_res._state = PARSE::STATE_REQUEST_METHOD_START;
 	this->_res._method = Method::UNKNOWN;
@@ -48,6 +49,7 @@ int RequestParser::Parse(std::string request)
 
 	while (current != end)
 	{
+		
 		switch (this->_res._state)
 		{
 		case PARSE::STATE_REQUEST_METHOD_START:
@@ -344,6 +346,9 @@ int RequestParser::Parse(std::string request)
 		}
 		case PARSE::STATE_END_OF_HEADERS_CR:
 		{
+			_res._config_res = Config(_res._headers["host"].data());
+			_res._location_res = _res._config_res(_res._uri.host.data());
+			// t_data ConfigData;
 			// Syntax Check
 			if (*current == '\n')
 				this->_res._state = PARSE::STATE_END_OF_HEADERS_LF;
@@ -355,15 +360,19 @@ int RequestParser::Parse(std::string request)
 				return (this->_res._Error_msg = "Invalid Headers : Both Content-Length & Transfer-Encoding are present", -1);
 			if (this->_res._headers.find("host") == this->_res._headers.end())
 				return (this->_res._Error_msg = "Invalid Headers : Host is missing", -1);
-
+			else
+			{
+			std::cout << _res._config_res["body_size"] << std::endl;
+			}
 			// [Content-Length] or [Transfer-Encoding]
 			if (this->_res._headers.find("content-length") != this->_res._headers.end())
 			{
 				this->_res._body_type = PARSE::CONTENT_LENGTH;
 
 				this->_res._body_length = stringToUnsignedLong(this->_res._headers["content-length"]);
-
-				if (this->_res._body_length <= 0 || this->_res._body_length > 10000000) // 10MB
+				
+				// TODO: change to number later.
+				if (this->_res._body_length <= 0 || this->_res._body_length > (unsigned long)atoi(_res._config_res["body_size"].data())) // 10MB
 					return (this->_res._Error_msg = "Invalid Content-Length", -1);
 			}
 			else if (this->_res._headers.find("transfer-encoding") != this->_res._headers.end())

@@ -21,7 +21,7 @@ bool Response::OpenFile(const std::string &resolvedPath, HttpRequestData &req, i
 	if (!this->_file.is_open())
 	{
 		// File not found
-		NotFound(client_socket);
+		NotFound(client_socket, req);
 		return false;
 	}
 	this->_file.seekg(0, std::ios::end);
@@ -43,6 +43,11 @@ int Response::Serve(int client_socket, HttpRequestData &req)
 	std::string Root = "www";
 	std::string resolvedPath = req._uri.host[req._uri.host.size() - 1] == '/' ? Root + req._uri.host + "index.html"
 																			  : Root + req._uri.host;
+
+	// /IMAGE.PHP
+	//resCGI =  hanglecgi(HttpRequestData, resCGI);
+	// res.CGI.getStatus() = 200 / 404 - 500
+
 
 	const size_t chunk_threshold = 2 * 1024 * 1024; // 2mb
 	const size_t buffer_size = 4096;				// 4kb

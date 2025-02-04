@@ -1,12 +1,13 @@
 #include "../includes/webserv.hpp"
 #include "../includes/http/request.hpp"
 
+ParsingConfigFile Config;
+
 int main(int ac, char **av)
 {
 	if (ac != 2)
 		return 1;
 
-	ParsingConfigFile Config;
 
 	Server server;
 
@@ -16,13 +17,10 @@ int main(int ac, char **av)
 
 		server.CreatServer(Config.getHosts());
 
-		// t_data info = Config("localhost:6000");  // method for choose  server block
-		// t_map location = info("pwd1"); // method for choose location block
 
-		// std::cout << info.server["host"][0] << std::endl;
-		// std::cout << info.server["port"][0] << std::endl;
+		//  access  error pages or info server   use  ==> _config_res["body_size"]  _config_res["403"]
+		//  access locations   use  ==> _location_res["root"]  _location_res.find("GET")   
 
-		// return 1;
 		server.CreatMultiplexing();
 	}
 	catch (const std::exception &e)

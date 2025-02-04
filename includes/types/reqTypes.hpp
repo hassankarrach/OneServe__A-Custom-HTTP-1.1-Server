@@ -2,6 +2,8 @@
 #define REQ_TYPES_HPP
 
 #include "httpTypes.hpp"
+#include "../../includes/server/ParsingConfigFile.hpp"
+
 #include <string>
 
 struct Uri
@@ -122,9 +124,15 @@ struct HttpRequestData
 	std::string							_boundary;
 	std::map<std::string, std::string>	_Fields;
 
+	///
+	t_data								_config_res;
+	t_map								_location_res;
+
 	// Flags
 	int									_is_multipart;
 	std::string							_tmp_file_name;
 };
+
+// ConfigFileResutl res;
 
 #endif

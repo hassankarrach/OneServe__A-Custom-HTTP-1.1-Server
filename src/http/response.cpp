@@ -74,10 +74,10 @@ void Response::BadRequest(int client_socket)
 		.Generate()
 		.Send(client_socket);
 }
-void Response::NotFound(int client_socket)
+void Response::NotFound(int client_socket, HttpRequestData &req)
 {
 	std::ifstream DefFile;
-	std::ifstream file("tkharbi9a");
+	std::ifstream file(req._config_res["404"].c_str());
 
 	std::string body;
 	

@@ -1,50 +1,27 @@
-
 #include "../../includes/server/t_data.hpp"
+
+
+
+void  throwServerError(bool expr , const char *str)
+{
+    if(expr)
+        throw std::runtime_error(str);
+}
+
 
 
 t_map t_data::operator()(const char *path)
 {
-    vector< pair<string , t_map > >::iterator it = this->location.begin();
+    vector<t_map>::iterator it = location.begin();
 
-    t_map save; 
-
-    while(it != this->location.end())
+    while(it != location.end())
     {
-        if(!it->first.compare(path))
-        {
-            save = it->second; 
-            break;
-        }
+        
+        if(it->find("uri" , path))
+            return *it;
         it++;
     }
-    if(save.empty())
-        std::cout << "is empty" << std::endl;
-    return save;
-}
-
-
-
-
-vector<string>  t_data::operator[](const char *path)
-{
-    std::cout << path << std::endl;
-    if(server.find(path) != server.end())
-    {
-        std::cout << "hello world" << std::endl;
-       server[path].push_back(""); 
-       exit(0);
-    }
-    
-    return this->server[path];
-}
-
-
-
-string t_data::operator[](int code)
-{
-    stringstream ss;
-    ss << code;
-    return(this->error[ss.str()]);
+    return(*location.begin());
 }
 
 
@@ -55,3 +32,15 @@ int t_data::empty()
 }
 
 
+
+
+int strtrim(std::string &str , const char *sharset)
+{
+    size_t fpos = str.find_first_not_of(sharset);
+    size_t lpos = str.find_last_not_of(sharset);
+    if(fpos == str.npos )
+        fpos = 0;
+
+    str = str.substr(fpos , lpos - fpos + 1);
+    return 1;
+}
