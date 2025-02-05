@@ -1,7 +1,7 @@
 #include "../includes/webserv.hpp"
 #include "../includes/http/request.hpp"
 
-ParsingConfigFile Config;
+Parse_Config Config;
 
 int main(int ac, char **av)
 {
@@ -15,6 +15,7 @@ int main(int ac, char **av)
 	{
 		Config.ParseFile(av[1]);
 
+		// return 1;
 		server.CreatServer(Config.getHosts());
 
 

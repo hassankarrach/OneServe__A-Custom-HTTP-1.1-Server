@@ -21,7 +21,7 @@
 #include "./http/response.hpp"
 #include "./http/request.hpp"
 #include "../includes/server/server.hpp"
-#include "../includes/server/ParsingConfigFile.hpp"
+#include "../includes/config/Parse_Config.hpp"
 // Sockets Macros
 #define PORT 8080
 #define BUFFER_SIZE 8192

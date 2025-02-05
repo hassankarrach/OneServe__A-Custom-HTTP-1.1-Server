@@ -1,40 +1,39 @@
-#include "../../includes/server/ParsingConfigFile.hpp"
+#include "../../includes/config/Parse_Config.hpp"
 
 string checks = "";
 
-map<int , void (ParsingConfigFile::*)()> funcArray;
-map<int , void (ParsingConfigFile::*)()> funcSave;
+map<int , void (Parse_Config::*)()> funcArray;
+map<int , void (Parse_Config::*)()> funcSave;
 
-t_data::t_data() {}
 
-void ParsingConfigFile::test() {}
+void Parse_Config::test() {}
 
-ParsingConfigFile::ParsingConfigFile(){}
+Parse_Config::Parse_Config(){}
 
-vector<addrinfo *>ParsingConfigFile::getHosts()
+vector<addrinfo *>Parse_Config::getHosts()
 {
     return save_addr;
 }
 
 
 
-t_data ParsingConfigFile::operator()(const char *_str)
+ConfigLoader Parse_Config::operator()(const char *_str)
 {
     string str = _str;
     getKeyValue(str , ':');
 
-    vector<t_data>::iterator it = blocks.begin();
+    vector<ConfigLoader>::iterator it = blocks.begin();
     while(it != blocks.end())
     {
         if(it->server.find("host", key.data()) && it->server.find("port", value.data()))
             return(*it);
         it++;
     }
-    throwServerError(true , "Error host is not exist");
+    throwConfigError(true , "Error host is not exist");
     return *it;
 }
 
-ParsingConfigFile::~ParsingConfigFile()
+Parse_Config::~Parse_Config()
 {
     func_ptr.clear(); key.clear();
     value.clear(); filename.clear();
@@ -43,7 +42,7 @@ ParsingConfigFile::~ParsingConfigFile()
 };
 
 
-int ParsingConfigFile::CheckCharacter(char c)
+int Parse_Config::CheckCharacter(char c)
 {
     for(unsigned long i = 0;i < func_ptr.size();i++)
         if(func_ptr[i](c)) return 1;
@@ -51,56 +50,56 @@ int ParsingConfigFile::CheckCharacter(char c)
 }
 
 
-void ParsingConfigFile::CheckString(string &str)
+void Parse_Config::CheckString(string &str)
 {
     for(unsigned long i = 0; i < str.size() ; i++)
-        throwServerError(!CheckCharacter(str[i]) , "webserv : Invalid String");
+        throwConfigError(!CheckCharacter(str[i]) , "webserv : Invalid String");
 }
 
 
 
-void ParsingConfigFile::CheckArrayOfValue(vector<string> &data , int flag)
+void Parse_Config::CheckArrayOfValue(vector<string> &data , int flag)
 {
     stringstream  obj(value);
     string word;
     size_t i = 0;
     for(i = 0; obj >> word; i++)
     {
-        throwServerError(!flag && !count(&VALUES[0] ,&VALUES[3] , word) , "werbserv : invalid value1" );
+        throwConfigError(!flag && !count(&VALUES[0] ,&VALUES[3] , word) , "werbserv : invalid value1" );
         data.push_back(word);
     }
-    throwServerError(flag == 1 && i != 1 , "werbserv : invalid value2" );
-    throwServerError(flag == 3  && i != 2 , "werbserv : invalid value3" );
+    throwConfigError(flag == 1 && i != 1 , "werbserv : invalid value2" );
+    throwConfigError(flag == 3  && i != 2 , "werbserv : invalid value3" );
 }
 
 
 
-void ParsingConfigFile::CheckBlockErrors()
+void Parse_Config::CheckBlockErrors()
 {
-    throwServerError((key.length() != 3 || key[0] < '3' || key[0] > '5') , "webserv : must btw 300 to 599");
+    throwConfigError((key.length() != 3 || key[0] < '3' || key[0] > '5') , "webserv : must btw 300 to 599");
     func_ptr.push_back(isdigit); CheckString(key);
 
     flag = 1;
-    throwServerError(data.error.find(key) , "webserve : dupblicate key error");
+    throwConfigError(data.error.find(key) , "webserve : dupblicate key error");
     CheckArrayOfValue(data.error[key] , flag);
 }
 
-void ParsingConfigFile::CheckBlockLocation()
+void Parse_Config::CheckBlockLocation()
 {
-    throwServerError(!count(KEYOFLOCATION , KEYOFLOCATION + 7 , key) ,  "webserv : location this key is not exist");
+    throwConfigError(!count(KEYOFLOCATION , KEYOFLOCATION + 7 , key) ,  "webserv : location this key is not exist");
 
     flag = (key[0] == 'c') * 2 + (key[0] == 'm') * 0 + !(key[0] == 'm') * 1;
-    throwServerError(key[0] != 'c' && loc.find(key) , "webserve : dupblicate key location");
+    throwConfigError(key[0] != 'c' && loc.find(key) , "webserve : dupblicate key location");
     CheckArrayOfValue(loc[key] , flag);
 }
 
 
-void ParsingConfigFile::CheckInfoServer()
+void Parse_Config::CheckInfoServer()
 {
-    throwServerError(!count(KEYOFSERVER , KEYOFSERVER + 4 , key) ,  "webserv : server this key is not exist");
+    throwConfigError(!count(KEYOFSERVER , KEYOFSERVER + 4 , key) ,  "webserv : server this key is not exist");
 
     flag = (key[0] == 'p' || key[0] == 's') * 2 + !(key[0] == 'p' || key[0] == 's');
-    throwServerError(data.server.find(key) , "webserve : dupblicate key server");
+    throwConfigError(data.server.find(key) , "webserve : dupblicate key server");
     CheckArrayOfValue(data.server[key] , flag);
     
     if(key[0] == 'b')
@@ -109,15 +108,15 @@ void ParsingConfigFile::CheckInfoServer()
         checks = "KM"; func_ptr.push_back(isdigit);
         CheckString(value);
         size_t pos = value.find_first_of("KM");
-        throwServerError(pos != value.length() - 1 && pos != value.npos  , "Error in body size");
+        throwConfigError(pos != value.length() - 1 && pos != value.npos  , "Error in body size");
     }
 }
 
-void ParsingConfigFile::getKeyValue(string &line , char set)
+void Parse_Config::getKeyValue(string &line , char set)
 {
     size_t c;
     c = line.find(set);
-    throwServerError(c == line.npos , "webserv : Error line");
+    throwConfigError(c == line.npos , "webserv : Error line");
 
     key = line.substr(0 , c);
     value = line.substr(c + 1, line.npos);
@@ -125,7 +124,7 @@ void ParsingConfigFile::getKeyValue(string &line , char set)
 }
 
 
-void ParsingConfigFile::ft_getaddrinfo()
+void Parse_Config::ft_getaddrinfo()
 {
     vector<string> it;
     const char *host;
@@ -139,14 +138,14 @@ void ParsingConfigFile::ft_getaddrinfo()
     {
         res = NULL;
         CodeErr =  getaddrinfo(host, it[i].data(), NULL ,&res);
-        throwServerError(CodeErr  , gai_strerror(CodeErr));
+        throwConfigError(CodeErr  , gai_strerror(CodeErr));
         save_addr.push_back(res);
     }
 }
 
 
 
-void ParsingConfigFile::push_back_data()
+void Parse_Config::push_back_data()
 {
     push_back_location();
     if(data.error.empty() && data.server.empty() && data.location.empty())
@@ -167,7 +166,7 @@ void ParsingConfigFile::push_back_data()
 
 
 
-void ParsingConfigFile::push_back_location()
+void Parse_Config::push_back_location()
 {
     if(loc.empty())
         return;
@@ -184,17 +183,17 @@ void ParsingConfigFile::push_back_location()
 
 void _fill()
 {
-    funcArray[8] = &ParsingConfigFile::CheckInfoServer;
-    funcArray[17] = &ParsingConfigFile::CheckBlockLocation;
-    funcArray[15] = &ParsingConfigFile::CheckBlockErrors;
+    funcArray[8] = &Parse_Config::CheckInfoServer;
+    funcArray[17] = &Parse_Config::CheckBlockLocation;
+    funcArray[15] = &Parse_Config::CheckBlockErrors;
 
-    funcSave[8] = &ParsingConfigFile::push_back_data;
-    funcSave[17] = &ParsingConfigFile::push_back_location;
-    funcSave[15] = &ParsingConfigFile::test;
+    funcSave[8] = &Parse_Config::push_back_data;
+    funcSave[17] = &Parse_Config::push_back_location;
+    funcSave[15] = &Parse_Config::test;
 }
 
 
-void ParsingConfigFile::ParseFile(const char *filename)
+void Parse_Config::ParseFile(const char *filename)
 {
     string line;
     int flag;
@@ -211,7 +210,7 @@ void ParsingConfigFile::ParseFile(const char *filename)
             (this->*funcSave[flag])();
             continue;
         }
-        throwServerError(!flag  , "webserve : Error");
+        throwConfigError(!flag  , "webserve : Error");
         
         getKeyValue(line , '=');
         (this->*funcArray[flag])();

@@ -1,16 +1,23 @@
-#include "../../includes/server/t_data.hpp"
+#include "../../includes/config/Config_Loader.hpp"
 
 
 
-void  throwServerError(bool expr , const char *str)
+
+
+ConfigLoader::ConfigLoader() {}
+
+ConfigLoader::~ConfigLoader() {}
+
+
+
+std::string ConfigLoader::operator[](const char *str)
 {
-    if(expr)
-        throw std::runtime_error(str);
+    if(server.find(str))
+        return(server[str]);
+    return(error[str]);
 }
 
-
-
-t_map t_data::operator()(const char *path)
+t_map ConfigLoader::operator()(const char *path)
 {
     vector<t_map>::iterator it = location.begin();
 
@@ -26,12 +33,46 @@ t_map t_data::operator()(const char *path)
 
 
 
-int t_data::empty()
+int ConfigLoader::empty()
 {
     return((error.empty() || location.empty() || server.empty()));
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///  functions  helper
+
+void  throwConfigError(bool expr , const char *str)
+{
+    if(expr) throw std::runtime_error(str);
+}
 
 
 int strtrim(std::string &str , const char *sharset)
