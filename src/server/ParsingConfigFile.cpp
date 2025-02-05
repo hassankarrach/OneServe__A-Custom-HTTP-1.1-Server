@@ -26,7 +26,7 @@ t_data ParsingConfigFile::operator()(const char *_str)
     vector<t_data>::iterator it = blocks.begin();
     while(it != blocks.end())
     {
-        if(it->server.find("host" , key.data()) && it->server.find("port" , value.data()))
+        if(it->server.find("host", key.data()) && it->server.find("port", value.data()))
             return(*it);
         it++;
     }
